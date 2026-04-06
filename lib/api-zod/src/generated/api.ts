@@ -168,6 +168,8 @@ export const AiSearchClientsResponse = zod.object({
       description: zod.string().nullish(),
       sourceUrl: zod.string().nullish(),
       instagram: zod.string().nullish(),
+      vk: zod.string().nullish(),
+      telegram: zod.string().nullish(),
     }),
   ),
   explanation: zod.string(),

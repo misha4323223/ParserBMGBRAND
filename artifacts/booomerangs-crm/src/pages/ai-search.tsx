@@ -3,8 +3,8 @@ import { useAiSearchClients, useCreateClient } from "@workspace/api-client-react
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Sparkles, Loader2, Globe, MapPin, Building2, Phone, ExternalLink, Plus, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { Search, Sparkles, Loader2, Globe, MapPin, Building2, Phone, ExternalLink, Plus, CheckCircle, Send } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -15,11 +15,66 @@ const EXAMPLE_QUERIES = [
   "Шоурумы одежды Новосибирск",
 ];
 
+const STORAGE_KEY = "ai_search_state";
+
+type SearchResult = {
+  companyName: string;
+  city?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  category?: string | null;
+  description?: string | null;
+  sourceUrl?: string | null;
+  instagram?: string | null;
+  vk?: string | null;
+  telegram?: string | null;
+};
+
+type SavedState = {
+  query: string;
+  results: SearchResult[];
+  explanation: string;
+  addedItems: number[];
+};
+
 export default function AiSearchPage() {
   const [query, setQuery] = useState("");
+  const [savedResults, setSavedResults] = useState<SearchResult[] | null>(null);
+  const [savedExplanation, setSavedExplanation] = useState<string>("");
   const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+
   const searchClients = useAiSearchClients();
   const createClient = useCreateClient();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved: SavedState = JSON.parse(raw);
+        setQuery(saved.query ?? "");
+        setSavedResults(saved.results ?? null);
+        setSavedExplanation(saved.explanation ?? "");
+        setAddedItems(new Set(saved.addedItems ?? []));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (searchClients.isSuccess && searchClients.data) {
+      const data = searchClients.data;
+      setSavedResults(data.internetResults);
+      setSavedExplanation(data.explanation);
+      try {
+        const toSave: SavedState = {
+          query: data.query,
+          results: data.internetResults,
+          explanation: data.explanation,
+          addedItems: [...addedItems],
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      } catch {}
+    }
+  }, [searchClients.isSuccess, searchClients.data]);
 
   const handleSearch = (e?: React.FormEvent, q?: string) => {
     e?.preventDefault();
@@ -27,18 +82,11 @@ export default function AiSearchPage() {
     if (!searchQuery.trim()) return;
     if (q) setQuery(q);
     setAddedItems(new Set());
+    setSavedResults(null);
     searchClients.mutate({ data: { query: searchQuery } });
   };
 
-  const handleAddToCRM = (index: number, result: {
-    companyName: string;
-    city?: string | null;
-    phone?: string | null;
-    website?: string | null;
-    category?: string | null;
-    description?: string | null;
-    instagram?: string | null;
-  }) => {
+  const handleAddToCRM = (index: number, result: SearchResult) => {
     createClient.mutate(
       {
         data: {
@@ -49,13 +97,24 @@ export default function AiSearchPage() {
           category: result.category ?? undefined,
           notes: result.description ?? undefined,
           instagram: result.instagram ?? undefined,
+          vk: result.vk ?? undefined,
+          telegram: result.telegram ?? undefined,
           status: "prospect",
         },
       },
       {
         onSuccess: () => {
-          setAddedItems((prev) => new Set(prev).add(index));
-          toast.success(`${result.companyName} добавлен в CRM как потенциальный клиент`);
+          const next = new Set(addedItems).add(index);
+          setAddedItems(next);
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              const saved: SavedState = JSON.parse(raw);
+              saved.addedItems = [...next];
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+            }
+          } catch {}
+          toast.success(`${result.companyName} добавлен в CRM`);
         },
         onError: () => {
           toast.error("Не удалось добавить клиента");
@@ -63,6 +122,9 @@ export default function AiSearchPage() {
       }
     );
   };
+
+  const displayResults = savedResults;
+  const hasResults = displayResults !== null;
 
   return (
     <AppLayout>
@@ -75,7 +137,7 @@ export default function AiSearchPage() {
             Поиск клиентов в интернете
           </h1>
           <p className="text-sm md:text-base text-muted-foreground max-w-xl px-2">
-            ИИ ищет магазины и компании в интернете — найденных можно сразу добавить в CRM
+            ИИ ищет магазины и компании — найденных можно сразу добавить в CRM
           </p>
         </div>
 
@@ -112,7 +174,7 @@ export default function AiSearchPage() {
           </CardContent>
         </Card>
 
-        {!searchClients.isSuccess && (
+        {!hasResults && !searchClients.isPending && (
           <div className="flex flex-wrap gap-2 justify-center">
             {EXAMPLE_QUERIES.map((q) => (
               <button
@@ -134,32 +196,30 @@ export default function AiSearchPage() {
           </div>
         )}
 
-        {searchClients.isSuccess && searchClients.data && (
+        {hasResults && !searchClients.isPending && (
           <div className="flex flex-col gap-4 md:gap-6 pb-4">
             <div className="p-4 bg-accent/5 border border-accent/20 rounded-lg flex gap-3">
               <Sparkles className="h-5 w-5 text-accent shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-1">Результат поиска</h3>
-                <p className="text-sm text-foreground/90 leading-relaxed">
-                  {searchClients.data.explanation}
-                </p>
+                <p className="text-sm text-foreground/90 leading-relaxed">{savedExplanation}</p>
               </div>
             </div>
 
             <h3 className="text-lg font-display font-bold flex items-center gap-2">
               <Globe className="h-5 w-5 text-primary" />
-              Найдено в интернете ({searchClients.data.internetResults.length})
+              Найдено в интернете ({displayResults!.length})
             </h3>
 
-            {searchClients.data.internetResults.length === 0 ? (
+            {displayResults!.length === 0 ? (
               <div className="py-12 border border-dashed border-border rounded-lg text-center text-muted-foreground flex flex-col items-center gap-3 bg-card/50">
                 <Search className="h-10 w-10 opacity-20" />
                 <p className="text-sm">Ничего не найдено по этому запросу.</p>
-                <p className="text-xs opacity-70">Попробуйте другой запрос — например, укажите город или тип магазина.</p>
+                <p className="text-xs opacity-70">Попробуйте другой запрос — укажите город или тип магазина.</p>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {searchClients.data.internetResults.map((result, index) => {
+                {displayResults!.map((result, index) => {
                   const isAdded = addedItems.has(index);
                   return (
                     <Card key={index} className="bg-card border-border h-full shadow-none rounded-sm">
@@ -191,14 +251,42 @@ export default function AiSearchPage() {
                           {result.website && (
                             <div className="flex items-center gap-1.5">
                               <Building2 className="h-3.5 w-3.5 shrink-0" />
-                              <a
-                                href={result.website}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline truncate"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <a href={result.website} target="_blank" rel="noopener noreferrer"
+                                className="text-primary hover:underline truncate">
                                 {result.website.replace(/^https?:\/\//, "")}
+                              </a>
+                            </div>
+                          )}
+                          {result.instagram && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-pink-500 shrink-0">IG</span>
+                              <a
+                                href={result.instagram.startsWith("http") ? result.instagram : `https://instagram.com/${result.instagram.replace("@", "")}`}
+                                target="_blank" rel="noopener noreferrer"
+                                className="text-pink-500 hover:underline truncate text-sm">
+                                {result.instagram.startsWith("@") ? result.instagram : `@${result.instagram.replace(/.*instagram\.com\//, "").replace(/\/$/, "")}`}
+                              </a>
+                            </div>
+                          )}
+                          {result.vk && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-blue-400 shrink-0">VK</span>
+                              <a
+                                href={result.vk.startsWith("http") ? result.vk : `https://vk.com/${result.vk.replace("@", "")}`}
+                                target="_blank" rel="noopener noreferrer"
+                                className="text-blue-400 hover:underline truncate text-sm">
+                                {result.vk.replace(/.*vk\.com\//, "vk.com/").replace(/\/$/, "")}
+                              </a>
+                            </div>
+                          )}
+                          {result.telegram && (
+                            <div className="flex items-center gap-1.5">
+                              <Send className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                              <a
+                                href={result.telegram.startsWith("http") ? result.telegram : `https://t.me/${result.telegram.replace("@", "")}`}
+                                target="_blank" rel="noopener noreferrer"
+                                className="text-sky-400 hover:underline truncate text-sm">
+                                {result.telegram.startsWith("@") ? result.telegram : `@${result.telegram.replace(/.*t\.me\//, "").replace(/\/$/, "")}`}
                               </a>
                             </div>
                           )}
@@ -212,12 +300,8 @@ export default function AiSearchPage() {
 
                         <div className="flex items-center gap-2 pt-1 border-t border-border/50">
                           {result.sourceUrl && (
-                            <a
-                              href={result.sourceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-                            >
+                            <a href={result.sourceUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors">
                               <ExternalLink className="h-3 w-3" />
                               Источник
                             </a>
@@ -226,7 +310,7 @@ export default function AiSearchPage() {
                             {isAdded ? (
                               <div className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
                                 <CheckCircle className="h-3.5 w-3.5" />
-                                Добавлен в CRM
+                                В CRM
                               </div>
                             ) : (
                               <Button

@@ -379,6 +379,10 @@ components:
           type: ["string", "null"]
         instagram:
           type: ["string", "null"]
+        vk:
+          type: ["string", "null"]
+        telegram:
+          type: ["string", "null"]
       required:
         - companyName
 

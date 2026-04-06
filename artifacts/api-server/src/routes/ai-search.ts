@@ -17,8 +17,9 @@ router.post("/ai-search", async (req, res): Promise<void> => {
   const { query } = parsed.data;
 
   const searchQueries = [
-    `${query} оптовые магазины одежда купить`,
-    `${query} магазин одежды контакты телефон`,
+    `${query} магазин одежды сайт контакты телефон`,
+    `${query} vk.com группа вконтакте магазин одежды`,
+    `${query} instagram магазин одежды @`,
   ];
 
   let allSearchContent = "";
@@ -38,7 +39,7 @@ router.post("/ai-search", async (req, res): Promise<void> => {
 
       if (tavilyResult.results?.length) {
         for (const r of tavilyResult.results.slice(0, 5)) {
-          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 500) ?? ""}\n`;
+          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 600) ?? ""}\n`;
         }
       }
     } catch (err) {
@@ -56,22 +57,26 @@ router.post("/ai-search", async (req, res): Promise<void> => {
   }
 
   const systemPrompt = `Ты — AI-ассистент для CRM системы бренда Booomerangs (тульский бренд одежды).
-Твоя задача: на основе данных из интернета найти потенциальных оптовых клиентов — магазины, шоурумы, бутики, маркетплейсы, стрит-шопы которые могут быть заинтересованы в закупке одежды.
+Твоя задача: на основе данных из интернета найти потенциальных оптовых клиентов — магазины, шоурумы, бутики, стрит-шопы, которые могут быть заинтересованы в закупке одежды.
 
 Данные из интернета:
 ${allSearchContent}
 
-Извлеки из этих данных конкретные компании/магазины. Для каждой компании верни:
-- companyName: название компании/магазина (обязательно)
-- city: город (если есть)
-- phone: телефон (если есть)
-- website: сайт (если есть)
-- category: тип магазина (например: стрит-шоп, бутик, онлайн-магазин, маркетплейс, шоурум)
-- description: краткое описание (1-2 предложения почему они подходят)
-- sourceUrl: ссылка на источник (если есть)
-- instagram: инстаграм (если есть)
+Для каждой найденной компании извлеки:
+- companyName: название (обязательно)
+- city: город
+- phone: телефон (форматы: +7..., 8-..., (код)...)
+- website: сайт (https://...)
+- category: тип (стрит-шоп, бутик, онлайн-магазин, шоурум, маркетплейс)
+- description: 1-2 предложения почему подходят Booomerangs
+- sourceUrl: ссылка-источник
+- instagram: ссылка или @никнейм (искать в тексте: instagram.com/..., @название)
+- vk: ссылка или id группы ВКонтакте (искать: vk.com/..., vk.com/public...)
+- telegram: ссылка или @никнейм телеграм (искать: t.me/..., @название)
 
-Верни ответ СТРОГО в формате JSON:
+ВАЖНО: Тщательно ищи соцсети в тексте — ссылки на vk.com, instagram.com, t.me, упоминания @никнеймов.
+
+Верни СТРОГО JSON:
 {
   "results": [
     {
@@ -82,13 +87,15 @@ ${allSearchContent}
       "category": "...",
       "description": "...",
       "sourceUrl": "...",
-      "instagram": "..."
+      "instagram": "...",
+      "vk": "...",
+      "telegram": "..."
     }
   ],
-  "explanation": "краткое объяснение на русском что было найдено и почему эти компании подходят"
+  "explanation": "краткое объяснение на русском"
 }
 
-Верни от 3 до 10 наиболее релевантных компаний. Если компания не имеет названия — пропусти её.`;
+Верни 3–10 наиболее релевантных компаний. Без названия — пропусти. Пустые поля оставляй как null.`;
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
@@ -114,6 +121,8 @@ ${allSearchContent}
     description?: string | null;
     sourceUrl?: string | null;
     instagram?: string | null;
+    vk?: string | null;
+    telegram?: string | null;
   }> = [];
   let explanation = "Поиск завершён";
 

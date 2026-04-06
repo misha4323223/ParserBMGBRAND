@@ -22,4 +22,8 @@ export interface InternetClient {
   sourceUrl?: string | null;
   /** @nullable */
   instagram?: string | null;
+  /** @nullable */
+  vk?: string | null;
+  /** @nullable */
+  telegram?: string | null;
 }
