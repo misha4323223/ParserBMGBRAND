@@ -5,10 +5,10 @@
  * Booomerangs CRM API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Client } from "./client";
+import type { InternetClient } from "./internetClient";
 
 export interface AiSearchResult {
-  clients: Client[];
+  internetResults: InternetClient[];
   explanation: string;
   query: string;
 }

@@ -14,6 +14,7 @@ export * from "./clientStats";
 export * from "./createClientBody";
 export * from "./errorResponse";
 export * from "./healthStatus";
+export * from "./internetClient";
 export * from "./listClientsParams";
 export * from "./regionCount";
 export * from "./updateClientBody";

@@ -1,5 +1,4 @@
 import { Router, type IRouter } from "express";
-import { db, clientsTable } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { AiSearchClientsBody } from "@workspace/api-zod";
 import { tavily } from "@tavily/core";
@@ -17,63 +16,79 @@ router.post("/ai-search", async (req, res): Promise<void> => {
 
   const { query } = parsed.data;
 
-  const allClients = await db.select().from(clientsTable);
+  const searchQueries = [
+    `${query} оптовые магазины одежда купить`,
+    `${query} магазин одежды контакты телефон`,
+  ];
 
-  const clientsSummary = allClients.map((c) =>
-    [
-      `ID: ${c.id}`,
-      `Компания: ${c.companyName}`,
-      c.contactName ? `Контакт: ${c.contactName}` : null,
-      c.phone ? `Тел: ${c.phone}` : null,
-      c.city ? `Город: ${c.city}` : null,
-      c.region ? `Регион: ${c.region}` : null,
-      c.category ? `Категория: ${c.category}` : null,
-      `Статус: ${c.status}`,
-      c.orderVolume ? `Объём заказа: ${c.orderVolume}` : null,
-      c.notes ? `Заметки: ${c.notes}` : null,
-    ]
-      .filter(Boolean)
-      .join(", ")
-  ).join("\n");
+  let allSearchContent = "";
 
-  let internetContext = "";
-  try {
-    const searchQuery = `Booomerangs одежда оптовые клиенты ${query}`;
-    const tavilyResult = await tavilyClient.search(searchQuery, {
-      searchDepth: "basic",
-      maxResults: 5,
-      includeAnswer: true,
+  for (const searchQ of searchQueries) {
+    try {
+      const tavilyResult = await tavilyClient.search(searchQ, {
+        searchDepth: "advanced",
+        maxResults: 5,
+        includeAnswer: true,
+        includeRawContent: false,
+      });
+
+      if (tavilyResult.answer) {
+        allSearchContent += `\nОтвет по запросу "${searchQ}":\n${tavilyResult.answer}\n`;
+      }
+
+      if (tavilyResult.results?.length) {
+        for (const r of tavilyResult.results.slice(0, 5)) {
+          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 500) ?? ""}\n`;
+        }
+      }
+    } catch (err) {
+      console.error("Tavily search error:", err);
+    }
+  }
+
+  if (!allSearchContent) {
+    res.json({
+      internetResults: [],
+      explanation: "Не удалось получить данные из интернета. Попробуйте другой запрос.",
+      query,
     });
-
-    if (tavilyResult.answer) {
-      internetContext = `\nДанные из интернета по запросу:\n${tavilyResult.answer}\n`;
-    }
-    if (tavilyResult.results && tavilyResult.results.length > 0) {
-      const snippets = tavilyResult.results
-        .slice(0, 3)
-        .map((r) => `- ${r.title}: ${r.content?.slice(0, 200) ?? ""}`)
-        .join("\n");
-      internetContext += `\nИсточники:\n${snippets}`;
-    }
-  } catch (err) {
-    internetContext = "";
+    return;
   }
 
   const systemPrompt = `Ты — AI-ассистент для CRM системы бренда Booomerangs (тульский бренд одежды).
-Тебе дана база клиентов и запрос менеджера по оптовым продажам.
-Твоя задача: найти подходящих клиентов по запросу и вернуть JSON с результатами.
-${internetContext ? `\nКонтекст из интернета (используй для уточнения критериев поиска):${internetContext}` : ""}
+Твоя задача: на основе данных из интернета найти потенциальных оптовых клиентов — магазины, шоурумы, бутики, маркетплейсы, стрит-шопы которые могут быть заинтересованы в закупке одежды.
 
-База клиентов:
-${clientsSummary}
+Данные из интернета:
+${allSearchContent}
 
-Верни ответ строго в формате JSON:
+Извлеки из этих данных конкретные компании/магазины. Для каждой компании верни:
+- companyName: название компании/магазина (обязательно)
+- city: город (если есть)
+- phone: телефон (если есть)
+- website: сайт (если есть)
+- category: тип магазина (например: стрит-шоп, бутик, онлайн-магазин, маркетплейс, шоурум)
+- description: краткое описание (1-2 предложения почему они подходят)
+- sourceUrl: ссылка на источник (если есть)
+- instagram: инстаграм (если есть)
+
+Верни ответ СТРОГО в формате JSON:
 {
-  "matchedIds": [список ID подходящих клиентов],
-  "explanation": "краткое объяснение на русском, почему выбраны именно эти клиенты"
+  "results": [
+    {
+      "companyName": "...",
+      "city": "...",
+      "phone": "...",
+      "website": "...",
+      "category": "...",
+      "description": "...",
+      "sourceUrl": "...",
+      "instagram": "..."
+    }
+  ],
+  "explanation": "краткое объяснение на русском что было найдено и почему эти компании подходят"
 }
 
-Если никто не подходит, верни пустой массив и объяснение.`;
+Верни от 3 до 10 наиболее релевантных компаний. Если компания не имеет названия — пропусти её.`;
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
@@ -81,7 +96,7 @@ ${clientsSummary}
     messages: [
       {
         role: "user",
-        content: `Запрос менеджера: ${query}`,
+        content: `Найди потенциальных клиентов по запросу: ${query}`,
       },
     ],
     system: systemPrompt,
@@ -90,24 +105,31 @@ ${clientsSummary}
   const block = message.content[0];
   const rawText = block.type === "text" ? block.text : "{}";
 
-  let matchedIds: number[] = [];
-  let explanation = "Нет объяснения";
+  let internetResults: Array<{
+    companyName: string;
+    city?: string | null;
+    phone?: string | null;
+    website?: string | null;
+    category?: string | null;
+    description?: string | null;
+    sourceUrl?: string | null;
+    instagram?: string | null;
+  }> = [];
+  let explanation = "Поиск завершён";
 
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      matchedIds = Array.isArray(parsed.matchedIds) ? parsed.matchedIds : [];
+      internetResults = Array.isArray(parsed.results) ? parsed.results : [];
       explanation = parsed.explanation ?? explanation;
     }
   } catch {
     explanation = "Не удалось обработать ответ ИИ";
   }
 
-  const matchedClients = allClients.filter((c) => matchedIds.includes(c.id));
-
   res.json({
-    clients: matchedClients,
+    internetResults,
     explanation,
     query,
   });

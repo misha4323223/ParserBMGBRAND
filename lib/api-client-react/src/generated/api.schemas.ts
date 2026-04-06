@@ -101,8 +101,26 @@ export interface AiSearchBody {
   query: string;
 }
 
+export interface InternetClient {
+  companyName: string;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  sourceUrl?: string | null;
+  /** @nullable */
+  instagram?: string | null;
+}
+
 export interface AiSearchResult {
-  clients: Client[];
+  internetResults: InternetClient[];
   explanation: string;
   query: string;
 }

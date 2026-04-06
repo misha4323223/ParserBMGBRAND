@@ -6,23 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateClientBody {
+export interface InternetClient {
   companyName: string;
-  /** @nullable */
-  contactName?: string | null;
-  /** @nullable */
-  phone?: string | null;
-  /** @nullable */
-  email?: string | null;
   /** @nullable */
   city?: string | null;
   /** @nullable */
-  region?: string | null;
+  phone?: string | null;
+  /** @nullable */
+  website?: string | null;
   /** @nullable */
   category?: string | null;
-  status: string;
   /** @nullable */
-  notes?: string | null;
+  description?: string | null;
   /** @nullable */
-  orderVolume?: number | null;
+  sourceUrl?: string | null;
+  /** @nullable */
+  instagram?: string | null;
 }

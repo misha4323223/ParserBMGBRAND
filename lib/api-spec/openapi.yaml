@@ -360,19 +360,41 @@ components:
       required:
         - query
 
+    InternetClient:
+      type: object
+      properties:
+        companyName:
+          type: string
+        city:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        sourceUrl:
+          type: ["string", "null"]
+        instagram:
+          type: ["string", "null"]
+      required:
+        - companyName
+
     AiSearchResult:
       type: object
       properties:
-        clients:
+        internetResults:
           type: array
           items:
-            $ref: "#/components/schemas/Client"
+            $ref: "#/components/schemas/InternetClient"
         explanation:
           type: string
         query:
           type: string
       required:
-        - clients
+        - internetResults
         - explanation
         - query
 
