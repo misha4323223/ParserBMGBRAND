@@ -25,7 +25,7 @@ export const ListClientsQueryParams = zod.object({
   category: zod.coerce.string().optional(),
 });
 
-export const ListClientsResponseItem = zod.object({
+const clientFields = {
   id: zod.number(),
   companyName: zod.string(),
   contactName: zod.string().nullish(),
@@ -40,7 +40,19 @@ export const ListClientsResponseItem = zod.object({
   lastOrderDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
-});
+  // Социальные сети
+  instagram: zod.string().nullish(),
+  vk: zod.string().nullish(),
+  telegram: zod.string().nullish(),
+  whatsapp: zod.string().nullish(),
+  website: zod.string().nullish(),
+  // Реквизиты
+  inn: zod.string().nullish(),
+  discount: zod.number().nullish(),
+  deliveryAddress: zod.string().nullish(),
+};
+
+export const ListClientsResponseItem = zod.object(clientFields);
 export const ListClientsResponse = zod.array(ListClientsResponseItem);
 
 /**
@@ -57,6 +69,14 @@ export const CreateClientBody = zod.object({
   status: zod.string(),
   notes: zod.string().nullish(),
   orderVolume: zod.number().nullish(),
+  instagram: zod.string().nullish(),
+  vk: zod.string().nullish(),
+  telegram: zod.string().nullish(),
+  whatsapp: zod.string().nullish(),
+  website: zod.string().nullish(),
+  inn: zod.string().nullish(),
+  discount: zod.number().nullish(),
+  deliveryAddress: zod.string().nullish(),
 });
 
 /**
@@ -89,22 +109,7 @@ export const GetClientParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetClientResponse = zod.object({
-  id: zod.number(),
-  companyName: zod.string(),
-  contactName: zod.string().nullish(),
-  phone: zod.string().nullish(),
-  email: zod.string().nullish(),
-  city: zod.string().nullish(),
-  region: zod.string().nullish(),
-  category: zod.string().nullish(),
-  status: zod.string(),
-  notes: zod.string().nullish(),
-  orderVolume: zod.number().nullish(),
-  lastOrderDate: zod.coerce.date().nullish(),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
-});
+export const GetClientResponse = zod.object(clientFields);
 
 /**
  * @summary Update an existing client
@@ -124,24 +129,17 @@ export const UpdateClientBody = zod.object({
   status: zod.string().optional(),
   notes: zod.string().nullish(),
   orderVolume: zod.number().nullish(),
+  instagram: zod.string().nullish(),
+  vk: zod.string().nullish(),
+  telegram: zod.string().nullish(),
+  whatsapp: zod.string().nullish(),
+  website: zod.string().nullish(),
+  inn: zod.string().nullish(),
+  discount: zod.number().nullish(),
+  deliveryAddress: zod.string().nullish(),
 });
 
-export const UpdateClientResponse = zod.object({
-  id: zod.number(),
-  companyName: zod.string(),
-  contactName: zod.string().nullish(),
-  phone: zod.string().nullish(),
-  email: zod.string().nullish(),
-  city: zod.string().nullish(),
-  region: zod.string().nullish(),
-  category: zod.string().nullish(),
-  status: zod.string(),
-  notes: zod.string().nullish(),
-  orderVolume: zod.number().nullish(),
-  lastOrderDate: zod.coerce.date().nullish(),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
-});
+export const UpdateClientResponse = zod.object(clientFields);
 
 /**
  * @summary Delete a client
@@ -158,24 +156,7 @@ export const AiSearchClientsBody = zod.object({
 });
 
 export const AiSearchClientsResponse = zod.object({
-  clients: zod.array(
-    zod.object({
-      id: zod.number(),
-      companyName: zod.string(),
-      contactName: zod.string().nullish(),
-      phone: zod.string().nullish(),
-      email: zod.string().nullish(),
-      city: zod.string().nullish(),
-      region: zod.string().nullish(),
-      category: zod.string().nullish(),
-      status: zod.string(),
-      notes: zod.string().nullish(),
-      orderVolume: zod.number().nullish(),
-      lastOrderDate: zod.coerce.date().nullish(),
-      createdAt: zod.coerce.date(),
-      updatedAt: zod.coerce.date(),
-    }),
-  ),
+  clients: zod.array(zod.object(clientFields)),
   explanation: zod.string(),
   query: zod.string(),
 });

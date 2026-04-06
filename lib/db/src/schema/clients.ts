@@ -15,6 +15,16 @@ export const clientsTable = pgTable("clients", {
   notes: text("notes"),
   orderVolume: integer("order_volume"),
   lastOrderDate: timestamp("last_order_date", { withTimezone: true }),
+  // Социальные сети
+  instagram: text("instagram"),
+  vk: text("vk"),
+  telegram: text("telegram"),
+  whatsapp: text("whatsapp"),
+  website: text("website"),
+  // Реквизиты и доп. информация
+  inn: text("inn"),
+  discount: integer("discount"),
+  deliveryAddress: text("delivery_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

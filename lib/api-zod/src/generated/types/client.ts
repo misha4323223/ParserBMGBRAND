@@ -30,4 +30,20 @@ export interface Client {
   lastOrderDate?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /** @nullable */
+  instagram?: string | null;
+  /** @nullable */
+  vk?: string | null;
+  /** @nullable */
+  telegram?: string | null;
+  /** @nullable */
+  whatsapp?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  inn?: string | null;
+  /** @nullable */
+  discount?: number | null;
+  /** @nullable */
+  deliveryAddress?: string | null;
 }
