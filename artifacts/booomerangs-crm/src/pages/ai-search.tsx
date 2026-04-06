@@ -115,7 +115,7 @@ export default function AiSearchPage() {
         {searchClients.isPending && (
           <div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm">Анализирую базу клиентов...</p>
+            <p className="text-sm">Ищу в интернете и анализирую базу клиентов...</p>
           </div>
         )}
 
