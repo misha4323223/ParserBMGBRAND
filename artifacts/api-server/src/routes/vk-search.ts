@@ -69,7 +69,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
 
     const searchRes = await vkRequest("groups.search", {
       q: searchQuery,
-      type: "group,page",
+      type: "group",
       count: 20,
       fields: FIELDS,
     }) as { items: VkGroup[]; count: number };
