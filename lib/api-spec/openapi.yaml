@@ -13,6 +13,8 @@ tags:
     description: Client management operations
   - name: ai-search
     description: AI-powered search operations
+  - name: vk-search
+    description: VK groups search operations
 paths:
   /healthz:
     get:
@@ -168,6 +170,37 @@ paths:
           description: Deleted
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /vk-search:
+    post:
+      operationId: vkSearchGroups
+      tags: [vk-search]
+      summary: Search VK groups for potential clients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VkSearchBody"
+      responses:
+        "200":
+          description: VK search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VkSearchResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: VK token not configured
           content:
             application/json:
               schema:
@@ -401,6 +434,60 @@ components:
         - internetResults
         - explanation
         - query
+
+    VkSearchBody:
+      type: object
+      properties:
+        query:
+          type: string
+        city:
+          type: ["string", "null"]
+      required:
+        - query
+
+    VkGroupResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        vkUrl:
+          type: string
+        description:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        membersCount:
+          type: ["integer", "null"]
+        photo:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - vkUrl
+
+    VkSearchResult:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/VkGroupResult"
+        query:
+          type: string
+        total:
+          type: integer
+      required:
+        - groups
+        - query
+        - total
 
     ErrorResponse:
       type: object

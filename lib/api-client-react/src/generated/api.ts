@@ -26,6 +26,8 @@ import type {
   HealthStatus,
   ListClientsParams,
   UpdateClientBody,
+  VkSearchBody,
+  VkSearchResult,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -622,6 +624,92 @@ export const useDeleteClient = <
   TContext
 > => {
   return useMutation(getDeleteClientMutationOptions(options));
+};
+
+/**
+ * @summary Search VK groups for potential clients
+ */
+export const getVkSearchGroupsUrl = () => {
+  return `/api/vk-search`;
+};
+
+export const vkSearchGroups = async (
+  vkSearchBody: VkSearchBody,
+  options?: RequestInit,
+): Promise<VkSearchResult> => {
+  return customFetch<VkSearchResult>(getVkSearchGroupsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(vkSearchBody),
+  });
+};
+
+export const getVkSearchGroupsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof vkSearchGroups>>,
+    TError,
+    { data: BodyType<VkSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof vkSearchGroups>>,
+  TError,
+  { data: BodyType<VkSearchBody> },
+  TContext
+> => {
+  const mutationKey = ["vkSearchGroups"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof vkSearchGroups>>,
+    { data: BodyType<VkSearchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return vkSearchGroups(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VkSearchGroupsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof vkSearchGroups>>
+>;
+export type VkSearchGroupsMutationBody = BodyType<VkSearchBody>;
+export type VkSearchGroupsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Search VK groups for potential clients
+ */
+export const useVkSearchGroups = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof vkSearchGroups>>,
+    TError,
+    { data: BodyType<VkSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof vkSearchGroups>>,
+  TError,
+  { data: BodyType<VkSearchBody> },
+  TContext
+> => {
+  return useMutation(getVkSearchGroupsMutationOptions(options));
 };
 
 /**

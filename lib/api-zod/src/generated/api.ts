@@ -151,6 +151,33 @@ export const DeleteClientParams = zod.object({
 });
 
 /**
+ * @summary Search VK groups for potential clients
+ */
+export const VkSearchGroupsBody = zod.object({
+  query: zod.string(),
+  city: zod.string().nullish(),
+});
+
+export const VkSearchGroupsResponse = zod.object({
+  groups: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      vkUrl: zod.string(),
+      description: zod.string().nullish(),
+      city: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      email: zod.string().nullish(),
+      website: zod.string().nullish(),
+      membersCount: zod.number().nullish(),
+      photo: zod.string().nullish(),
+    }),
+  ),
+  query: zod.string(),
+  total: zod.number(),
+});
+
+/**
  * @summary AI-powered natural language search for clients
  */
 export const AiSearchClientsBody = zod.object({

@@ -129,6 +129,38 @@ export interface AiSearchResult {
   query: string;
 }
 
+export interface VkSearchBody {
+  query: string;
+  /** @nullable */
+  city?: string | null;
+}
+
+export interface VkGroupResult {
+  id: number;
+  name: string;
+  vkUrl: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  membersCount?: number | null;
+  /** @nullable */
+  photo?: string | null;
+}
+
+export interface VkSearchResult {
+  groups: VkGroupResult[];
+  query: string;
+  total: number;
+}
+
 export interface ErrorResponse {
   error: string;
 }

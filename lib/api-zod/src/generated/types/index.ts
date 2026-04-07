@@ -18,3 +18,6 @@ export * from "./internetClient";
 export * from "./listClientsParams";
 export * from "./regionCount";
 export * from "./updateClientBody";
+export * from "./vkGroupResult";
+export * from "./vkSearchBody";
+export * from "./vkSearchResult";
