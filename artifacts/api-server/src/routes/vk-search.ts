@@ -4,7 +4,7 @@ import { VkSearchGroupsBody } from "@workspace/api-zod";
 const router: IRouter = Router();
 
 const VK_API = "https://api.vk.com/method";
-const VK_VERSION = "5.131";
+const VK_VERSION = "5.199";
 
 function getToken(): string {
   return process.env.VK_ACCESS_TOKEN ?? "";
