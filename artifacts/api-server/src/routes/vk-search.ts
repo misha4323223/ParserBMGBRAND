@@ -15,17 +15,12 @@ interface VkGroup {
   name: string;
   screen_name: string;
   description?: string;
-  city?: { title: string };
-  contacts?: Array<{
-    user_id?: number;
-    desc?: string;
-    phone?: string;
-    email?: string;
-  }>;
+  city?: { id: number; title: string };
   links?: Array<{ url: string; name?: string }>;
   site?: string;
   members_count?: number;
   photo_200?: string;
+  status?: string;
 }
 
 async function vkRequest(method: string, params: Record<string, string | number>) {
@@ -59,11 +54,13 @@ router.post("/vk-search", async (req, res): Promise<void> => {
   const searchQuery = city ? `${query} ${city}` : query;
 
   try {
+    const FIELDS = "description,city,links,site,members_count,photo_200,status";
+
     const searchRes = await vkRequest("groups.search", {
       q: searchQuery,
-      type: "group,page,event",
+      type: "group,page",
       count: 20,
-      fields: "description,city,contacts,links,site,members_count,photo_200",
+      fields: FIELDS,
     }) as { items: VkGroup[]; count: number };
 
     const groups: VkGroup[] = searchRes?.items ?? [];
@@ -76,7 +73,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
     const ids = groups.map((g) => g.id).join(",");
     const detailRes = await vkRequest("groups.getById", {
       group_ids: ids,
-      fields: "description,city,contacts,links,site,members_count,photo_200",
+      fields: FIELDS,
     }) as { groups: VkGroup[] };
 
     const detailed: VkGroup[] = detailRes?.groups ?? groups;
@@ -85,10 +82,10 @@ router.post("/vk-search", async (req, res): Promise<void> => {
       id: g.id,
       name: g.name,
       vkUrl: `https://vk.com/${g.screen_name}`,
-      description: g.description?.slice(0, 300) ?? null,
+      description: (g.description || g.status)?.slice(0, 300) ?? null,
       city: g.city?.title ?? null,
-      phone: g.contacts?.find((c) => c.phone)?.phone ?? null,
-      email: g.contacts?.find((c) => c.email)?.email ?? null,
+      phone: null,
+      email: null,
       website: g.site ?? g.links?.[0]?.url ?? null,
       membersCount: g.members_count ?? null,
       photo: g.photo_200 ?? null,
