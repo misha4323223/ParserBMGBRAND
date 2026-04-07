@@ -442,6 +442,9 @@ components:
           type: string
         city:
           type: ["string", "null"]
+        offset:
+          type: integer
+          default: 0
       required:
         - query
 
@@ -484,10 +487,19 @@ components:
           type: string
         total:
           type: integer
+        totalCount:
+          type: integer
+        hasMore:
+          type: boolean
+        offset:
+          type: integer
       required:
         - groups
         - query
         - total
+        - totalCount
+        - hasMore
+        - offset
 
     ErrorResponse:
       type: object

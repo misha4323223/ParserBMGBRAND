@@ -133,6 +133,7 @@ export interface VkSearchBody {
   query: string;
   /** @nullable */
   city?: string | null;
+  offset?: number;
 }
 
 export interface VkGroupResult {
@@ -159,6 +160,9 @@ export interface VkSearchResult {
   groups: VkGroupResult[];
   query: string;
   total: number;
+  totalCount: number;
+  hasMore: boolean;
+  offset: number;
 }
 
 export interface ErrorResponse {

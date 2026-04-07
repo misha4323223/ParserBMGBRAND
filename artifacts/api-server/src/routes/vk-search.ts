@@ -61,8 +61,9 @@ router.post("/vk-search", async (req, res): Promise<void> => {
     return;
   }
 
-  const { query, city } = parsed.data;
+  const { query, city, offset = 0 } = parsed.data;
   const searchQuery = city ? `${query} ${city}` : query;
+  const PAGE_SIZE = 20;
 
   try {
     const FIELDS = "description,city,links,site,members_count,photo_200,status";
@@ -70,14 +71,16 @@ router.post("/vk-search", async (req, res): Promise<void> => {
     const searchRes = await vkRequest("groups.search", {
       q: searchQuery,
       type: "group",
-      count: 20,
+      count: PAGE_SIZE,
+      offset: offset,
       fields: FIELDS,
     }) as { items: VkGroup[]; count: number };
 
     const groups: VkGroup[] = searchRes?.items ?? [];
+    const totalCount: number = searchRes?.count ?? 0;
 
     if (groups.length === 0) {
-      res.json({ groups: [], query, total: 0 });
+      res.json({ groups: [], query, total: 0, totalCount: 0, hasMore: false, offset });
       return;
     }
 
@@ -102,7 +105,10 @@ router.post("/vk-search", async (req, res): Promise<void> => {
       photo: g.photo_200 ?? null,
     }));
 
-    res.json({ groups: result, query, total: result.length });
+    const nextOffset = offset + result.length;
+    const hasMore = nextOffset < totalCount;
+
+    res.json({ groups: result, query, total: result.length, totalCount, hasMore, offset });
   } catch (err) {
     console.error("VK search error:", err);
     res.status(500).json({ error: err instanceof Error ? err.message : "Ошибка VK API" });

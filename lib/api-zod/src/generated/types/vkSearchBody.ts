@@ -10,4 +10,5 @@ export interface VkSearchBody {
   query: string;
   /** @nullable */
   city?: string | null;
+  offset?: number;
 }
