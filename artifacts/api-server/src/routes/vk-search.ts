@@ -24,14 +24,25 @@ interface VkGroup {
 }
 
 async function vkRequest(method: string, params: Record<string, string | number>) {
-  const token = getToken();
+  const token = getToken().trim();
   const url = new URL(`${VK_API}/${method}`);
-  url.searchParams.set("access_token", token);
   url.searchParams.set("v", VK_VERSION);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, String(v));
   }
-  const res = await fetch(url.toString());
+
+  const isNewFormat = token.startsWith("vk1.");
+
+  let res: Response;
+  if (isNewFormat) {
+    res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } else {
+    url.searchParams.set("access_token", token);
+    res = await fetch(url.toString());
+  }
+
   const json = await res.json() as { response?: unknown; error?: { error_msg: string } };
   if (json.error) throw new Error(`VK API error: ${json.error.error_msg}`);
   return json.response;
