@@ -80,6 +80,9 @@ export default function AiSearchPage() {
   const [vkCity, setVkCity] = useState("");
   const [vkGroups, setVkGroups] = useState<VkGroup[] | null>(null);
   const [vkAddedItems, setVkAddedItems] = useState<Set<number>>(new Set());
+  const [vkHasMore, setVkHasMore] = useState(false);
+  const [vkTotalCount, setVkTotalCount] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const searchClients = useAiSearchClients();
   const vkSearch = useVkSearchGroups();
@@ -126,12 +129,20 @@ export default function AiSearchPage() {
   useEffect(() => {
     if (vkSearch.isSuccess && vkSearch.data) {
       const data = vkSearch.data;
-      setVkGroups(data.groups as VkGroup[]);
+      const newGroups = data.groups as VkGroup[];
+      const incoming = data.offset ?? 0;
+
+      setVkGroups((prev) => incoming === 0 ? newGroups : [...(prev ?? []), ...newGroups]);
+      setVkHasMore(data.hasMore ?? false);
+      setVkTotalCount(data.totalCount ?? 0);
+      setIsLoadingMore(false);
+
       try {
+        const merged = incoming === 0 ? newGroups : [...(vkGroups ?? []), ...newGroups];
         const toSave: VkSavedState = {
           query: data.query,
           city: vkCity,
-          groups: data.groups as VkGroup[],
+          groups: merged,
           addedItems: [...vkAddedItems],
         };
         localStorage.setItem(VK_STORAGE_KEY, JSON.stringify(toSave));
@@ -156,7 +167,17 @@ export default function AiSearchPage() {
     if (q) setVkQuery(q);
     setVkAddedItems(new Set());
     setVkGroups(null);
-    vkSearch.mutate({ data: { query: searchQuery, city: vkCity || null } });
+    setVkHasMore(false);
+    setVkTotalCount(0);
+    setIsLoadingMore(false);
+    vkSearch.mutate({ data: { query: searchQuery, city: vkCity || null, offset: 0 } });
+  };
+
+  const handleLoadMore = () => {
+    if (!vkQuery.trim() || vkSearch.isPending) return;
+    const offset = vkGroups?.length ?? 0;
+    setIsLoadingMore(true);
+    vkSearch.mutate({ data: { query: vkQuery, city: vkCity || null, offset } });
   };
 
   const handleAddToCRM = (index: number, result: SearchResult) => {
@@ -536,11 +557,12 @@ export default function AiSearchPage() {
               </div>
             )}
 
-            {hasVkResults && !vkSearch.isPending && (
+            {hasVkResults && (
               <div className="flex flex-col gap-4 pb-4">
                 <h3 className="text-lg font-display font-bold flex items-center gap-2">
                   <span className="text-base font-bold text-blue-400">VK</span>
-                  Найдено групп ({vkGroups!.length})
+                  Найдено групп ({vkGroups!.length}
+                  {vkTotalCount > 0 && ` из ${vkTotalCount.toLocaleString("ru")}`})
                 </h3>
 
                 {vkGroups!.length === 0 ? (
@@ -554,7 +576,7 @@ export default function AiSearchPage() {
                     {vkGroups!.map((group, index) => {
                       const isAdded = vkAddedItems.has(index);
                       return (
-                        <Card key={group.id} className="bg-card border-border h-full shadow-none rounded-sm">
+                        <Card key={`${group.id}-${index}`} className="bg-card border-border h-full shadow-none rounded-sm">
                           <CardContent className="p-4 flex flex-col gap-3">
                             <div className="flex items-start gap-3">
                               {group.photo && (
@@ -651,6 +673,32 @@ export default function AiSearchPage() {
                         </Card>
                       );
                     })}
+                  </div>
+                )}
+
+                {vkHasMore && (
+                  <div className="flex flex-col items-center gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto gap-2 border-blue-400/40 text-blue-400 hover:bg-blue-400/10 hover:border-blue-400"
+                      onClick={handleLoadMore}
+                      disabled={vkSearch.isPending}
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Загружаю...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4" />
+                          Загрузить ещё 20
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Показано {vkGroups?.length ?? 0} из {vkTotalCount.toLocaleString("ru")}
+                    </p>
                   </div>
                 )}
               </div>
