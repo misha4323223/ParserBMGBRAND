@@ -28,6 +28,22 @@ export interface Client {
   orderVolume?: number | null;
   /** @nullable */
   lastOrderDate?: Date | null;
+  /** @nullable */
+  instagram?: string | null;
+  /** @nullable */
+  vk?: string | null;
+  /** @nullable */
+  telegram?: string | null;
+  /** @nullable */
+  whatsapp?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  inn?: string | null;
+  /** @nullable */
+  discount?: number | null;
+  /** @nullable */
+  deliveryAddress?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

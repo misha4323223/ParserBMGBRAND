@@ -269,6 +269,22 @@ components:
         lastOrderDate:
           type: ["string", "null"]
           format: date-time
+        instagram:
+          type: ["string", "null"]
+        vk:
+          type: ["string", "null"]
+        telegram:
+          type: ["string", "null"]
+        whatsapp:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        inn:
+          type: ["string", "null"]
+        discount:
+          type: ["integer", "null"]
+        deliveryAddress:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -305,6 +321,22 @@ components:
           type: ["string", "null"]
         orderVolume:
           type: ["integer", "null"]
+        instagram:
+          type: ["string", "null"]
+        vk:
+          type: ["string", "null"]
+        telegram:
+          type: ["string", "null"]
+        whatsapp:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        inn:
+          type: ["string", "null"]
+        discount:
+          type: ["integer", "null"]
+        deliveryAddress:
+          type: ["string", "null"]
       required:
         - companyName
         - status
@@ -332,6 +364,22 @@ components:
           type: ["string", "null"]
         orderVolume:
           type: ["integer", "null"]
+        instagram:
+          type: ["string", "null"]
+        vk:
+          type: ["string", "null"]
+        telegram:
+          type: ["string", "null"]
+        whatsapp:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        inn:
+          type: ["string", "null"]
+        discount:
+          type: ["integer", "null"]
+        deliveryAddress:
+          type: ["string", "null"]
 
     ClientStats:
       type: object
