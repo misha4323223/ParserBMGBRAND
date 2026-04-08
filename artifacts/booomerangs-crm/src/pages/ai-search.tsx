@@ -228,6 +228,8 @@ export default function AiSearchPage() {
           phone: group.phone ?? undefined,
           email: group.email ?? undefined,
           website: group.website ?? undefined,
+          instagram: group.instagram ?? undefined,
+          telegram: group.telegram ?? undefined,
           notes: group.description ?? undefined,
           vk: group.vkUrl,
           status: "prospect",
@@ -627,6 +629,28 @@ export default function AiSearchPage() {
                                     target="_blank" rel="noopener noreferrer"
                                     className="text-primary hover:underline truncate">
                                     {group.website.replace(/^https?:\/\//, "")}
+                                  </a>
+                                </div>
+                              )}
+                              {group.instagram && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-pink-500 shrink-0">IG</span>
+                                  <a
+                                    href={group.instagram.startsWith("http") ? group.instagram : `https://instagram.com/${group.instagram.replace("@", "")}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="text-pink-500 hover:underline truncate text-sm">
+                                    {group.instagram.replace(/.*instagram\.com\//, "@").replace(/\/$/, "")}
+                                  </a>
+                                </div>
+                              )}
+                              {group.telegram && (
+                                <div className="flex items-center gap-1.5">
+                                  <Send className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                                  <a
+                                    href={group.telegram.startsWith("http") ? group.telegram : `https://t.me/${group.telegram.replace("@", "")}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="text-sky-400 hover:underline truncate text-sm">
+                                    {group.telegram.replace(/.*t\.me\//, "@").replace(/\/$/, "")}
                                   </a>
                                 </div>
                               )}
