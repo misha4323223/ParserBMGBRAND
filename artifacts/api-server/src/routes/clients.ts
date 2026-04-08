@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, and, sql, desc } from "drizzle-orm";
 import { db, clientsTable } from "@workspace/db";
+import * as XLSX from "xlsx";
 import {
   ListClientsQueryParams,
   CreateClientBody,
@@ -11,6 +12,75 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+router.get("/clients/export", async (req, res): Promise<void> => {
+  const parsed = ListClientsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { search, status, region, category } = parsed.data;
+  const conditions = [];
+
+  if (search) {
+    conditions.push(
+      sql`(${ilike(clientsTable.companyName, `%${search}%`)} OR ${ilike(clientsTable.contactName!, `%${search}%`)} OR ${ilike(clientsTable.city!, `%${search}%`)})`
+    );
+  }
+  if (status) conditions.push(eq(clientsTable.status, status));
+  if (region) conditions.push(eq(clientsTable.region!, region));
+  if (category) conditions.push(eq(clientsTable.category!, category));
+
+  const clients = await db
+    .select()
+    .from(clientsTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(clientsTable.createdAt));
+
+  const statusLabel = (s: string) => ({ active: "Активный", prospect: "Потенциальный", inactive: "Неактивный" }[s] ?? s);
+
+  const rows = clients.map((c) => ({
+    "Компания": c.companyName,
+    "Статус": statusLabel(c.status),
+    "Контактное лицо": c.contactName ?? "",
+    "Телефон": c.phone ?? "",
+    "Email": c.email ?? "",
+    "Город": c.city ?? "",
+    "Регион": c.region ?? "",
+    "Категория": c.category ?? "",
+    "Сайт": c.website ?? "",
+    "ВКонтакте": c.vk ?? "",
+    "Instagram": c.instagram ?? "",
+    "Telegram": c.telegram ?? "",
+    "Объём заказов": c.orderVolume ?? "",
+    "Скидка (%)": c.discount ?? "",
+    "Адрес доставки": c.deliveryAddress ?? "",
+    "ИНН": c.inn ?? "",
+    "Заметки": c.notes ?? "",
+    "Дата последнего заказа": c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString("ru-RU") : "",
+    "Дата добавления": c.createdAt ? new Date(c.createdAt).toLocaleDateString("ru-RU") : "",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const colWidths = [
+    { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 16 }, { wch: 25 },
+    { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 25 },
+    { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 10 }, { wch: 30 },
+    { wch: 14 }, { wch: 40 }, { wch: 18 }, { wch: 18 },
+  ];
+  ws["!cols"] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Клиенты");
+
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  const date = new Date().toISOString().slice(0, 10);
+
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="booomerangs-clients-${date}.xlsx"`);
+  res.send(buf);
+});
 
 router.get("/clients/stats", async (_req, res): Promise<void> => {
   const all = await db.select().from(clientsTable);

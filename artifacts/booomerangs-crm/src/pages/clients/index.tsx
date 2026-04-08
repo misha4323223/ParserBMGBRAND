@@ -3,9 +3,10 @@ import { useListClients } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, MapPin, Phone } from "lucide-react";
+import { Search, Plus, MapPin, Phone, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
@@ -14,10 +15,35 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [, setLocation] = useLocation();
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: clients, isLoading } = useListClients({
     search: debouncedSearch || undefined,
   });
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const url = `${base}/api/clients/export${params.toString() ? `?${params}` : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Ошибка экспорта");
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      const date = new Date().toISOString().slice(0, 10);
+      link.download = `booomerangs-clients-${date}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toast.success("Файл Excel скачан");
+    } catch {
+      toast.error("Не удалось скачать файл");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -46,11 +72,26 @@ export default function ClientsPage() {
             <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight text-foreground">Клиенты</h1>
             <p className="text-muted-foreground text-sm mt-0.5 hidden sm:block">Управление оптовыми покупателями и партнерами.</p>
           </div>
-          <Button onClick={() => setLocation("/clients/new")} className="gap-2 shrink-0 text-sm">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Добавить клиента</span>
-            <span className="sm:hidden">Добавить</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={isExporting || isLoading}
+              className="gap-2 text-sm"
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">Экспорт Excel</span>
+            </Button>
+            <Button onClick={() => setLocation("/clients/new")} className="gap-2 text-sm">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Добавить клиента</span>
+              <span className="sm:hidden">Добавить</span>
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
