@@ -226,6 +226,36 @@ export const VkSearchGroupsResponse = zod.object({
 });
 
 /**
+ * @summary Search 2GIS for potential clients
+ */
+export const gisSearchPlacesBodyPageDefault = 1;
+
+export const GisSearchPlacesBody = zod.object({
+  query: zod.string(),
+  city: zod.string().nullish(),
+  page: zod.number().default(gisSearchPlacesBodyPageDefault),
+});
+
+export const GisSearchPlacesResponse = zod.object({
+  results: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      address: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      website: zod.string().nullish(),
+      email: zod.string().nullish(),
+      category: zod.string().nullish(),
+      gisUrl: zod.string().nullish(),
+    }),
+  ),
+  query: zod.string(),
+  total: zod.number(),
+  hasMore: zod.boolean(),
+  page: zod.number(),
+});
+
+/**
  * @summary AI-powered natural language search for clients
  */
 export const AiSearchClientsBody = zod.object({

@@ -23,6 +23,8 @@ import type {
   ClientStats,
   CreateClientBody,
   ErrorResponse,
+  GisSearchBody,
+  GisSearchResult,
   HealthStatus,
   ListClientsParams,
   UpdateClientBody,
@@ -710,6 +712,92 @@ export const useVkSearchGroups = <
   TContext
 > => {
   return useMutation(getVkSearchGroupsMutationOptions(options));
+};
+
+/**
+ * @summary Search 2GIS for potential clients
+ */
+export const getGisSearchPlacesUrl = () => {
+  return `/api/gis-search`;
+};
+
+export const gisSearchPlaces = async (
+  gisSearchBody: GisSearchBody,
+  options?: RequestInit,
+): Promise<GisSearchResult> => {
+  return customFetch<GisSearchResult>(getGisSearchPlacesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(gisSearchBody),
+  });
+};
+
+export const getGisSearchPlacesMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gisSearchPlaces>>,
+    TError,
+    { data: BodyType<GisSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof gisSearchPlaces>>,
+  TError,
+  { data: BodyType<GisSearchBody> },
+  TContext
+> => {
+  const mutationKey = ["gisSearchPlaces"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof gisSearchPlaces>>,
+    { data: BodyType<GisSearchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return gisSearchPlaces(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GisSearchPlacesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof gisSearchPlaces>>
+>;
+export type GisSearchPlacesMutationBody = BodyType<GisSearchBody>;
+export type GisSearchPlacesMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Search 2GIS for potential clients
+ */
+export const useGisSearchPlaces = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof gisSearchPlaces>>,
+    TError,
+    { data: BodyType<GisSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof gisSearchPlaces>>,
+  TError,
+  { data: BodyType<GisSearchBody> },
+  TContext
+> => {
+  return useMutation(getGisSearchPlacesMutationOptions(options));
 };
 
 /**

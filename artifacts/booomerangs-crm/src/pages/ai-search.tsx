@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/layout/app-layout";
-import { useAiSearchClients, useVkSearchGroups, useCreateClient } from "@workspace/api-client-react";
+import { useAiSearchClients, useVkSearchGroups, useGisSearchPlaces, useCreateClient } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -27,8 +27,16 @@ const VK_EXAMPLE_QUERIES = [
   "стрит-шоп одежда",
 ];
 
+const GIS_EXAMPLE_QUERIES = [
+  "магазин уличной одежды",
+  "стрит-шоп одежда",
+  "молодёжная одежда бутик",
+  "шоурум одежды",
+];
+
 const STORAGE_KEY = "ai_search_state";
 const VK_STORAGE_KEY = "vk_search_state";
+const GIS_STORAGE_KEY = "gis_search_state";
 
 type SearchResult = {
   companyName: string;
@@ -72,6 +80,24 @@ type VkSavedState = {
   addedItems: number[];
 };
 
+type GisPlace = {
+  id: string;
+  name: string;
+  address?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  email?: string | null;
+  category?: string | null;
+  gisUrl?: string | null;
+};
+
+type GisSavedState = {
+  query: string;
+  city: string;
+  places: GisPlace[];
+  addedItems: string[];
+};
+
 export default function AiSearchPage() {
   const [query, setQuery] = useState("");
   const [savedResults, setSavedResults] = useState<SearchResult[] | null>(null);
@@ -86,8 +112,18 @@ export default function AiSearchPage() {
   const [vkTotalCount, setVkTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  const [gisQuery, setGisQuery] = useState("");
+  const [gisCity, setGisCity] = useState("");
+  const [gisPlaces, setGisPlaces] = useState<GisPlace[] | null>(null);
+  const [gisAddedItems, setGisAddedItems] = useState<Set<string>>(new Set());
+  const [gisHasMore, setGisHasMore] = useState(false);
+  const [gisTotalCount, setGisTotalCount] = useState(0);
+  const [gisPage, setGisPage] = useState(1);
+  const [gisLoadingMore, setGisLoadingMore] = useState(false);
+
   const searchClients = useAiSearchClients();
   const vkSearch = useVkSearchGroups();
+  const gisSearch = useGisSearchPlaces();
   const createClient = useCreateClient();
 
   useEffect(() => {
@@ -107,6 +143,14 @@ export default function AiSearchPage() {
         setVkCity(saved.city ?? "");
         setVkGroups(saved.groups ?? null);
         setVkAddedItems(new Set(saved.addedItems ?? []));
+      }
+      const gisRaw = localStorage.getItem(GIS_STORAGE_KEY);
+      if (gisRaw) {
+        const saved: GisSavedState = JSON.parse(gisRaw);
+        setGisQuery(saved.query ?? "");
+        setGisCity(saved.city ?? "");
+        setGisPlaces(saved.places ?? null);
+        setGisAddedItems(new Set(saved.addedItems ?? []));
       }
     } catch {}
   }, []);
@@ -152,6 +196,29 @@ export default function AiSearchPage() {
     }
   }, [vkSearch.isSuccess, vkSearch.data]);
 
+  useEffect(() => {
+    if (gisSearch.isSuccess && gisSearch.data) {
+      const data = gisSearch.data;
+      const newPlaces = data.results as GisPlace[];
+      const incoming = (data.page ?? 1) === 1;
+      setGisPlaces((prev) => incoming ? newPlaces : [...(prev ?? []), ...newPlaces]);
+      setGisHasMore(data.hasMore ?? false);
+      setGisTotalCount(data.total ?? 0);
+      setGisPage(data.page ?? 1);
+      setGisLoadingMore(false);
+      try {
+        const merged = incoming ? newPlaces : [...(gisPlaces ?? []), ...newPlaces];
+        const toSave: GisSavedState = {
+          query: data.query,
+          city: gisCity,
+          places: merged,
+          addedItems: [...gisAddedItems],
+        };
+        localStorage.setItem(GIS_STORAGE_KEY, JSON.stringify(toSave));
+      } catch {}
+    }
+  }, [gisSearch.isSuccess, gisSearch.data]);
+
   const handleSearch = (e?: React.FormEvent, q?: string) => {
     e?.preventDefault();
     const searchQuery = q ?? query;
@@ -180,6 +247,60 @@ export default function AiSearchPage() {
     const offset = vkGroups?.length ?? 0;
     setIsLoadingMore(true);
     vkSearch.mutate({ data: { query: vkQuery, city: vkCity || null, offset } });
+  };
+
+  const handleGisSearch = (e?: React.FormEvent, q?: string) => {
+    e?.preventDefault();
+    const searchQuery = q ?? gisQuery;
+    if (!searchQuery.trim()) return;
+    if (q) setGisQuery(q);
+    setGisAddedItems(new Set());
+    setGisPlaces(null);
+    setGisHasMore(false);
+    setGisTotalCount(0);
+    setGisPage(1);
+    setGisLoadingMore(false);
+    gisSearch.mutate({ data: { query: searchQuery, city: gisCity || null, page: 1 } });
+  };
+
+  const handleGisLoadMore = () => {
+    if (!gisQuery.trim() || gisSearch.isPending) return;
+    setGisLoadingMore(true);
+    gisSearch.mutate({ data: { query: gisQuery, city: gisCity || null, page: gisPage + 1 } });
+  };
+
+  const handleAddGisToCRM = (id: string, place: GisPlace) => {
+    createClient.mutate(
+      {
+        data: {
+          companyName: place.name,
+          phone: place.phone ?? undefined,
+          website: place.website ?? undefined,
+          email: place.email ?? undefined,
+          category: place.category ?? undefined,
+          notes: place.address ? `Адрес: ${place.address}` : undefined,
+          status: "prospect",
+        },
+      },
+      {
+        onSuccess: () => {
+          const next = new Set(gisAddedItems).add(id);
+          setGisAddedItems(next);
+          try {
+            const raw = localStorage.getItem(GIS_STORAGE_KEY);
+            if (raw) {
+              const saved: GisSavedState = JSON.parse(raw);
+              saved.addedItems = [...next];
+              localStorage.setItem(GIS_STORAGE_KEY, JSON.stringify(saved));
+            }
+          } catch {}
+          toast.success(`${place.name} добавлен в CRM`);
+        },
+        onError: () => {
+          toast.error("Не удалось добавить клиента");
+        },
+      }
+    );
   };
 
   const handleAddToCRM = (index: number, result: SearchResult) => {
@@ -276,14 +397,18 @@ export default function AiSearchPage() {
         </div>
 
         <Tabs defaultValue="internet" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-2">
-            <TabsTrigger value="internet" className="gap-2">
-              <Globe className="h-4 w-4" />
-              Интернет + ИИ
+          <TabsList className="grid w-full grid-cols-3 mb-2">
+            <TabsTrigger value="internet" className="gap-1 text-xs sm:text-sm">
+              <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Интернет + </span>ИИ
             </TabsTrigger>
-            <TabsTrigger value="vk" className="gap-2">
-              <span className="text-sm font-bold text-blue-400">VK</span>
-              ВКонтакте
+            <TabsTrigger value="vk" className="gap-1 text-xs sm:text-sm">
+              <span className="font-bold text-blue-400">VK</span>
+              <span className="hidden sm:inline">ВКонтакте</span>
+            </TabsTrigger>
+            <TabsTrigger value="gis" className="gap-1 text-xs sm:text-sm">
+              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" />
+              2ГИС
             </TabsTrigger>
           </TabsList>
 
@@ -724,6 +849,183 @@ export default function AiSearchPage() {
                     </Button>
                     <p className="text-xs text-muted-foreground">
                       Показано {vkGroups?.length ?? 0} из {vkTotalCount.toLocaleString("ru")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+          {/* === 2GIS TAB === */}
+          <TabsContent value="gis" className="flex flex-col gap-5">
+            <Card className="bg-card border-green-400/20 rounded-lg overflow-hidden">
+              <CardContent className="p-3 flex flex-col gap-2">
+                <form onSubmit={handleGisSearch} className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={gisQuery}
+                        onChange={(e) => setGisQuery(e.target.value)}
+                        placeholder="Что искать: магазин одежды, стрит-шоп..."
+                        className="pl-9 border-green-400/30 focus-visible:ring-green-400/30"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); handleGisSearch(e); }
+                        }}
+                      />
+                    </div>
+                    <div className="relative w-36">
+                      <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={gisCity}
+                        onChange={(e) => setGisCity(e.target.value)}
+                        placeholder="Город"
+                        className="pl-9 border-green-400/30 focus-visible:ring-green-400/30"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={!gisQuery.trim() || gisSearch.isPending}
+                    className="w-full gap-2 font-medium bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {gisSearch.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Найти в 2ГИС
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {!gisPlaces && !gisSearch.isPending && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                {GIS_EXAMPLE_QUERIES.map((q) => (
+                  <button key={q} onClick={() => handleGisSearch(undefined, q)}
+                    className="text-xs md:text-sm px-3 py-1.5 rounded-full border border-green-400/30 text-muted-foreground hover:border-green-400 hover:text-green-400 transition-colors bg-card">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {gisSearch.isPending && (
+              <div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-green-400" />
+                <p className="text-sm font-medium">Ищу в 2ГИС...</p>
+              </div>
+            )}
+
+            {gisSearch.isError && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+                {gisSearch.error?.message?.includes("TWOGIS_API_KEY")
+                  ? "Ключ 2ГИС не настроен. Добавьте TWOGIS_API_KEY в секреты."
+                  : "Ошибка 2ГИС API. Проверьте ключ и попробуйте снова."}
+              </div>
+            )}
+
+            {gisPlaces && (
+              <div className="flex flex-col gap-4 pb-4">
+                <h3 className="text-lg font-display font-bold flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-green-400" />
+                  Найдено ({gisPlaces.length}
+                  {gisTotalCount > 0 && ` из ${gisTotalCount.toLocaleString("ru")}`})
+                </h3>
+
+                {gisPlaces.length === 0 ? (
+                  <div className="py-12 border border-dashed border-border rounded-lg text-center text-muted-foreground flex flex-col items-center gap-3 bg-card/50">
+                    <Search className="h-10 w-10 opacity-20" />
+                    <p className="text-sm">Ничего не найдено.</p>
+                    <p className="text-xs opacity-70">Попробуйте изменить запрос или город.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {gisPlaces.map((place) => {
+                      const isAdded = gisAddedItems.has(place.id);
+                      return (
+                        <Card key={place.id} className="bg-card border-border h-full shadow-none rounded-sm">
+                          <CardContent className="p-4 flex flex-col gap-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <h4 className="font-bold font-display text-base leading-tight line-clamp-2">
+                                {place.name}
+                              </h4>
+                              {place.category && (
+                                <Badge variant="outline" className="shrink-0 rounded-sm text-xs border-green-400/30 text-green-400">
+                                  {place.category}
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="text-sm text-muted-foreground flex flex-col gap-1.5">
+                              {place.address && (
+                                <div className="flex items-center gap-1.5">
+                                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="line-clamp-1">{place.address}</span>
+                                </div>
+                              )}
+                              {place.phone && (
+                                <div className="flex items-center gap-1.5">
+                                  <Phone className="h-3.5 w-3.5 shrink-0" />
+                                  <span>{place.phone}</span>
+                                </div>
+                              )}
+                              {place.email && (
+                                <div className="flex items-center gap-1.5">
+                                  <Mail className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="truncate">{place.email}</span>
+                                </div>
+                              )}
+                              {place.website && (
+                                <div className="flex items-center gap-1.5">
+                                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                                  <a href={place.website.startsWith("http") ? place.website : `https://${place.website}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="text-primary hover:underline truncate">
+                                    {place.website.replace(/^https?:\/\//, "")}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                              {place.gisUrl && (
+                                <a href={place.gisUrl} target="_blank" rel="noopener noreferrer"
+                                  className="text-xs text-muted-foreground hover:text-green-400 flex items-center gap-1 transition-colors">
+                                  <ExternalLink className="h-3 w-3" />
+                                  Открыть 2ГИС
+                                </a>
+                              )}
+                              <div className="ml-auto">
+                                {isAdded ? (
+                                  <div className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    В CRM
+                                  </div>
+                                ) : (
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 text-xs gap-1 rounded-sm"
+                                    onClick={() => handleAddGisToCRM(place.id, place)}
+                                    disabled={createClient.isPending}>
+                                    <Plus className="h-3 w-3" />
+                                    В CRM
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {gisHasMore && (
+                  <div className="flex flex-col items-center gap-2 pt-2">
+                    <Button variant="outline"
+                      className="w-full sm:w-auto gap-2 border-green-400/40 text-green-400 hover:bg-green-400/10 hover:border-green-400"
+                      onClick={handleGisLoadMore}
+                      disabled={gisSearch.isPending}>
+                      {gisLoadingMore ? <><Loader2 className="h-4 w-4 animate-spin" />Загружаю...</> : <><Plus className="h-4 w-4" />Загрузить ещё</>}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Показано {gisPlaces?.length ?? 0} из {gisTotalCount.toLocaleString("ru")}
                     </p>
                   </div>
                 )}

@@ -217,6 +217,38 @@ export interface VkSearchResult {
   offset: number;
 }
 
+export interface GisSearchBody {
+  query: string;
+  /** @nullable */
+  city?: string | null;
+  page?: number;
+}
+
+export interface GisPlaceResult {
+  id: string;
+  name: string;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  gisUrl?: string | null;
+}
+
+export interface GisSearchResult {
+  results: GisPlaceResult[];
+  query: string;
+  total: number;
+  hasMore: boolean;
+  page: number;
+}
+
 export interface ErrorResponse {
   error: string;
 }

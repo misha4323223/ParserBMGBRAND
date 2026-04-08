@@ -15,6 +15,8 @@ tags:
     description: AI-powered search operations
   - name: vk-search
     description: VK groups search operations
+  - name: gis-search
+    description: 2GIS places search operations
 paths:
   /healthz:
     get:
@@ -201,6 +203,37 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           description: VK token not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /gis-search:
+    post:
+      operationId: gisSearchPlaces
+      tags: [gis-search]
+      summary: Search 2GIS for potential clients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GisSearchBody"
+      responses:
+        "200":
+          description: 2GIS search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GisSearchResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: 2GIS token not configured
           content:
             application/json:
               schema:
@@ -552,6 +585,64 @@ components:
         - totalCount
         - hasMore
         - offset
+
+    GisSearchBody:
+      type: object
+      properties:
+        query:
+          type: string
+        city:
+          type: ["string", "null"]
+        page:
+          type: integer
+          default: 1
+      required:
+        - query
+
+    GisPlaceResult:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        gisUrl:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+
+    GisSearchResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/GisPlaceResult"
+        query:
+          type: string
+        total:
+          type: integer
+        hasMore:
+          type: boolean
+        page:
+          type: integer
+      required:
+        - results
+        - query
+        - total
+        - hasMore
+        - page
 
     ErrorResponse:
       type: object
