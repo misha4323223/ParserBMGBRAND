@@ -20,9 +20,9 @@ interface GisContactGroup {
 interface GisItem {
   id: string;
   name: string;
-  address?: { name?: string };
+  address?: { name?: string; components?: Array<{ type: string; value?: string; comment?: string }> };
   contact_groups?: GisContactGroup[];
-  rubrics?: Array<{ name: string }>;
+  rubrics?: Array<{ name: string; kind?: string }>;
   point?: { lon: number; lat: number };
   url?: string;
 }
@@ -72,10 +72,9 @@ router.post("/gis-search", async (req, res): Promise<void> => {
       q: searchQuery,
       fields: "items.point,items.address,items.contact_groups,items.rubrics,items.url",
       key: token,
-      page_size: "20",
+      page_size: "10",
       page: String(page),
       locale: "ru_RU",
-      type: "branch",
     });
 
     const response = await fetch(`${TWOGIS_API}?${params}`);
@@ -97,19 +96,33 @@ router.post("/gis-search", async (req, res): Promise<void> => {
 
     const results = items.map((item) => {
       const { phone, website, email } = extractContacts(item.contact_groups);
+
+      // Build address from components or use name field
+      let address: string | null = item.address?.name ?? null;
+      if (!address && item.address?.components?.length) {
+        const parts = item.address.components
+          .map((c) => c.value ?? c.comment)
+          .filter(Boolean);
+        address = parts.join(", ") || null;
+      }
+
+      // Prefer primary rubric
+      const primaryRubric = item.rubrics?.find((r) => r.kind === "primary") ?? item.rubrics?.[0];
+
       return {
         id: item.id,
         name: item.name,
-        address: item.address?.name ?? null,
+        address,
         phone,
         website,
         email,
-        category: item.rubrics?.[0]?.name ?? null,
+        category: primaryRubric?.name ?? null,
         gisUrl: item.url ?? null,
       };
     });
 
-    const hasMore = page * 20 < total;
+    const PAGE_SIZE = 10;
+    const hasMore = page * PAGE_SIZE < total;
 
     res.json({ results, query, total, hasMore, page });
   } catch (err) {

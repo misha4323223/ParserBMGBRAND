@@ -1022,7 +1022,7 @@ export default function AiSearchPage() {
                       className="w-full sm:w-auto gap-2 border-green-400/40 text-green-400 hover:bg-green-400/10 hover:border-green-400"
                       onClick={handleGisLoadMore}
                       disabled={gisSearch.isPending}>
-                      {gisLoadingMore ? <><Loader2 className="h-4 w-4 animate-spin" />Загружаю...</> : <><Plus className="h-4 w-4" />Загрузить ещё</>}
+                      {gisLoadingMore ? <><Loader2 className="h-4 w-4 animate-spin" />Загружаю...</> : <><Plus className="h-4 w-4" />Загрузить ещё 10</>}
                     </Button>
                     <p className="text-xs text-muted-foreground">
                       Показано {gisPlaces?.length ?? 0} из {gisTotalCount.toLocaleString("ru")}
