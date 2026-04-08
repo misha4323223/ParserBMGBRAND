@@ -28,7 +28,7 @@ router.post("/ai-search", async (req, res): Promise<void> => {
     try {
       const tavilyResult = await tavilyClient.search(searchQ, {
         searchDepth: "advanced",
-        maxResults: 5,
+        maxResults: 7,
         includeAnswer: true,
         includeRawContent: false,
       });
@@ -38,8 +38,8 @@ router.post("/ai-search", async (req, res): Promise<void> => {
       }
 
       if (tavilyResult.results?.length) {
-        for (const r of tavilyResult.results.slice(0, 5)) {
-          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 600) ?? ""}\n`;
+        for (const r of tavilyResult.results.slice(0, 7)) {
+          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 1200) ?? ""}\n`;
         }
       }
     } catch (err) {

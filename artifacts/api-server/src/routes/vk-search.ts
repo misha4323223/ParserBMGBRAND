@@ -16,11 +16,58 @@ interface VkGroup {
   screen_name: string;
   description?: string;
   city?: { id: number; title: string };
-  links?: Array<{ url: string; name?: string }>;
+  links?: Array<{ url: string; name?: string; desc?: string }>;
   site?: string;
   members_count?: number;
   photo_200?: string;
   status?: string;
+}
+
+function extractPhone(text: string): string | null {
+  const m = text.match(/(?:\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/);
+  return m ? m[0].replace(/\s/g, "") : null;
+}
+
+function extractEmail(text: string): string | null {
+  const m = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  return m ? m[0] : null;
+}
+
+function extractInstagram(text: string, links: VkGroup["links"]): string | null {
+  for (const link of links ?? []) {
+    if (link.url?.includes("instagram.com") || link.url?.includes("instagr.am")) {
+      return link.url;
+    }
+  }
+  const m = text.match(/instagram\.com\/([A-Za-z0-9_.]+)\/?/);
+  if (m) return `https://instagram.com/${m[1]}`;
+  const at = text.match(/(?:instagram|insta|ig)[:\s]+@?([A-Za-z0-9_.]{3,30})/i);
+  if (at) return `https://instagram.com/${at[1]}`;
+  return null;
+}
+
+function extractTelegram(text: string, links: VkGroup["links"]): string | null {
+  for (const link of links ?? []) {
+    if (link.url?.includes("t.me") || link.url?.includes("telegram.me")) {
+      return link.url;
+    }
+  }
+  const m = text.match(/t\.me\/([A-Za-z0-9_]+)\/?/);
+  if (m) return `https://t.me/${m[1]}`;
+  const at = text.match(/telegram[:\s]+@?([A-Za-z0-9_]{4,32})/i);
+  if (at) return `https://t.me/${at[1]}`;
+  return null;
+}
+
+function extractWebsite(g: VkGroup): string | null {
+  if (g.site) return g.site;
+  for (const link of g.links ?? []) {
+    const u = link.url ?? "";
+    if (!u.includes("vk.com") && !u.includes("instagram.com") && !u.includes("t.me") && !u.includes("facebook.com")) {
+      return u;
+    }
+  }
+  return null;
 }
 
 async function vkRequest(method: string, params: Record<string, string | number>) {
@@ -92,18 +139,23 @@ router.post("/vk-search", async (req, res): Promise<void> => {
 
     const detailed: VkGroup[] = detailRes?.groups ?? groups;
 
-    const result = detailed.map((g) => ({
-      id: g.id,
-      name: g.name,
-      vkUrl: `https://vk.com/${g.screen_name}`,
-      description: (g.description || g.status)?.slice(0, 300) ?? null,
-      city: g.city?.title ?? null,
-      phone: null,
-      email: null,
-      website: g.site ?? g.links?.[0]?.url ?? null,
-      membersCount: g.members_count ?? null,
-      photo: g.photo_200 ?? null,
-    }));
+    const result = detailed.map((g) => {
+      const fullText = [g.description, g.status].filter(Boolean).join(" ");
+      return {
+        id: g.id,
+        name: g.name,
+        vkUrl: `https://vk.com/${g.screen_name}`,
+        description: fullText.slice(0, 300) || null,
+        city: g.city?.title ?? null,
+        phone: extractPhone(fullText),
+        email: extractEmail(fullText),
+        website: extractWebsite(g),
+        instagram: extractInstagram(fullText, g.links),
+        telegram: extractTelegram(fullText, g.links),
+        membersCount: g.members_count ?? null,
+        photo: g.photo_200 ?? null,
+      };
+    });
 
     const nextOffset = offset + result.length;
     const hasMore = nextOffset < totalCount;

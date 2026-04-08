@@ -151,6 +151,10 @@ export interface VkGroupResult {
   /** @nullable */
   website?: string | null;
   /** @nullable */
+  instagram?: string | null;
+  /** @nullable */
+  telegram?: string | null;
+  /** @nullable */
   membersCount?: number | null;
   /** @nullable */
   photo?: string | null;

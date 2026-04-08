@@ -467,6 +467,10 @@ components:
           type: ["string", "null"]
         website:
           type: ["string", "null"]
+        instagram:
+          type: ["string", "null"]
+        telegram:
+          type: ["string", "null"]
         membersCount:
           type: ["integer", "null"]
         photo:

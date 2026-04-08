@@ -52,6 +52,8 @@ type VkGroup = {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  instagram?: string | null;
+  telegram?: string | null;
   membersCount?: number | null;
   photo?: string | null;
 };

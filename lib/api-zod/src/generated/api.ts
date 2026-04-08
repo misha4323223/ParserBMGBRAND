@@ -172,6 +172,8 @@ export const VkSearchGroupsResponse = zod.object({
       phone: zod.string().nullish(),
       email: zod.string().nullish(),
       website: zod.string().nullish(),
+      instagram: zod.string().nullish(),
+      telegram: zod.string().nullish(),
       membersCount: zod.number().nullish(),
       photo: zod.string().nullish(),
     }),
