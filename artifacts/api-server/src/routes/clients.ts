@@ -79,6 +79,8 @@ router.get("/clients/export", async (req, res): Promise<void> => {
 
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="booomerangs-clients-${date}.xlsx"`);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Pragma", "no-cache");
   res.send(buf);
 });
 
