@@ -54,8 +54,6 @@ router.get("/clients/export", async (req, res): Promise<void> => {
     "Instagram": c.instagram ?? "",
     "Telegram": c.telegram ?? "",
     "Объём заказов": c.orderVolume ?? "",
-    "Скидка (%)": c.discount ?? "",
-    "Адрес доставки": c.deliveryAddress ?? "",
     "ИНН": c.inn ?? "",
     "Заметки": c.notes ?? "",
     "Дата последнего заказа": c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString("ru-RU") : "",
@@ -66,8 +64,8 @@ router.get("/clients/export", async (req, res): Promise<void> => {
   const colWidths = [
     { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 16 }, { wch: 25 },
     { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 25 },
-    { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 10 }, { wch: 30 },
-    { wch: 14 }, { wch: 40 }, { wch: 18 }, { wch: 18 },
+    { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 40 },
+    { wch: 18 }, { wch: 18 },
   ];
   ws["!cols"] = colWidths;
 
