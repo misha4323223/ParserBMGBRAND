@@ -608,6 +608,8 @@ components:
           type: string
         address:
           type: ["string", "null"]
+        city:
+          type: ["string", "null"]
         phone:
           type: ["string", "null"]
         website:
@@ -616,6 +618,10 @@ components:
           type: ["string", "null"]
         category:
           type: ["string", "null"]
+        allCategories:
+          type: array
+          items:
+            type: string
         gisUrl:
           type: ["string", "null"]
       required:

@@ -929,6 +929,16 @@ export default function AiSearchPage() {
                   {gisTotalCount > 0 && ` из ${gisTotalCount.toLocaleString("ru")}`})
                 </h3>
 
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+                  <span className="shrink-0">⚠️</span>
+                  <span>
+                    Демо ключ 2ГИС не отдаёт телефоны и адреса — это ограничение API.
+                    Нажмите <strong>«Открыть в 2ГИС»</strong> на карточке чтобы увидеть полные контакты.
+                    Полные данные доступны с платным ключом от{" "}
+                    <a href="https://dev.2gis.com" target="_blank" rel="noopener noreferrer" className="underline">dev.2gis.com</a>.
+                  </span>
+                </div>
+
                 {gisPlaces.length === 0 ? (
                   <div className="py-12 border border-dashed border-border rounded-lg text-center text-muted-foreground flex flex-col items-center gap-3 bg-card/50">
                     <Search className="h-10 w-10 opacity-20" />
@@ -939,22 +949,33 @@ export default function AiSearchPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     {gisPlaces.map((place) => {
                       const isAdded = gisAddedItems.has(place.id);
+                      const categories = place.allCategories?.length
+                        ? place.allCategories
+                        : place.category ? [place.category] : [];
                       return (
                         <Card key={place.id} className="bg-card border-border h-full shadow-none rounded-sm">
                           <CardContent className="p-4 flex flex-col gap-3">
-                            <div className="flex justify-between items-start gap-2">
-                              <h4 className="font-bold font-display text-base leading-tight line-clamp-2">
+                            <div className="flex flex-col gap-2">
+                              <h4 className="font-bold font-display text-base leading-tight">
                                 {place.name}
                               </h4>
-                              {place.category && (
-                                <Badge variant="outline" className="shrink-0 rounded-sm text-xs border-green-400/30 text-green-400">
-                                  {place.category}
-                                </Badge>
-                              )}
+                              <div className="flex flex-wrap gap-1">
+                                {place.city && (
+                                  <Badge variant="outline" className="rounded-sm text-xs border-green-400/30 text-green-400 gap-1 py-0">
+                                    <MapPin className="h-2.5 w-2.5" />
+                                    {place.city}
+                                  </Badge>
+                                )}
+                                {categories.slice(0, 3).map((cat, i) => (
+                                  <Badge key={i} variant="outline" className="rounded-sm text-xs border-border/50 text-muted-foreground py-0">
+                                    {cat}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
 
                             <div className="text-sm text-muted-foreground flex flex-col gap-1.5">
-                              {place.address && (
+                              {place.address && place.address !== place.city && (
                                 <div className="flex items-center gap-1.5">
                                   <MapPin className="h-3.5 w-3.5 shrink-0" />
                                   <span className="line-clamp-1">{place.address}</span>
@@ -982,14 +1003,17 @@ export default function AiSearchPage() {
                                   </a>
                                 </div>
                               )}
+                              {!place.phone && !place.email && !place.website && !place.address && (
+                                <span className="text-xs italic opacity-40">Контакты доступны на сайте 2ГИС</span>
+                              )}
                             </div>
 
-                            <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                            <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                               {place.gisUrl && (
                                 <a href={place.gisUrl} target="_blank" rel="noopener noreferrer"
-                                  className="text-xs text-muted-foreground hover:text-green-400 flex items-center gap-1 transition-colors">
+                                  className="text-xs font-medium text-green-400 hover:text-green-300 flex items-center gap-1.5 transition-colors border border-green-400/40 hover:border-green-400 rounded-sm px-2 py-1">
                                   <ExternalLink className="h-3 w-3" />
-                                  Открыть 2ГИС
+                                  Открыть в 2ГИС
                                 </a>
                               )}
                               <div className="ml-auto">

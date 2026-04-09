@@ -230,6 +230,8 @@ export interface GisPlaceResult {
   /** @nullable */
   address?: string | null;
   /** @nullable */
+  city?: string | null;
+  /** @nullable */
   phone?: string | null;
   /** @nullable */
   website?: string | null;
@@ -237,6 +239,7 @@ export interface GisPlaceResult {
   email?: string | null;
   /** @nullable */
   category?: string | null;
+  allCategories?: string[];
   /** @nullable */
   gisUrl?: string | null;
 }

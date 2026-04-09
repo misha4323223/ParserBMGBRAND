@@ -17,14 +17,24 @@ interface GisContactGroup {
   contacts: GisContact[];
 }
 
+interface GisAddressComponent {
+  type: string;
+  value?: string;
+  comment?: string;
+}
+
 interface GisItem {
   id: string;
   name: string;
-  address?: { name?: string; components?: Array<{ type: string; value?: string; comment?: string }> };
+  address?: {
+    name?: string;
+    components?: GisAddressComponent[];
+  };
   contact_groups?: GisContactGroup[];
   rubrics?: Array<{ name: string; kind?: string }>;
   point?: { lon: number; lat: number };
   url?: string;
+  org?: { id?: string };
 }
 
 function extractContacts(groups: GisContactGroup[] = []) {
@@ -45,6 +55,44 @@ function extractContacts(groups: GisContactGroup[] = []) {
     website: websites[0] ?? null,
     email: emails[0] ?? null,
   };
+}
+
+function extractAddress(components: GisAddressComponent[] = []): {
+  fullAddress: string | null;
+  city: string | null;
+} {
+  let city: string | null = null;
+  const streetParts: string[] = [];
+
+  for (const c of components) {
+    const val = c.value ?? c.comment ?? null;
+    if (!val) continue;
+
+    if (c.type === "location" || c.type === "city") {
+      city = val;
+    } else if (
+      c.type === "street" ||
+      c.type === "building" ||
+      c.type === "district" ||
+      c.type === "suburb"
+    ) {
+      streetParts.push(val);
+    }
+  }
+
+  const streetAddress = streetParts.join(", ") || null;
+  const fullAddress = [streetAddress, city].filter(Boolean).join(", ") || null;
+
+  return { fullAddress, city };
+}
+
+function buildGisUrl(item: GisItem, city: string | null): string {
+  if (item.url) return item.url;
+  const query = encodeURIComponent(item.name);
+  if (city) {
+    return `https://2gis.ru/search/${query}`;
+  }
+  return `https://2gis.ru/search/${query}`;
 }
 
 router.post("/gis-search", async (req, res): Promise<void> => {
@@ -70,7 +118,7 @@ router.post("/gis-search", async (req, res): Promise<void> => {
   try {
     const params = new URLSearchParams({
       q: searchQuery,
-      fields: "items.point,items.address,items.contact_groups,items.rubrics,items.url",
+      fields: "items.point,items.address,items.contact_groups,items.rubrics,items.url,items.org",
       key: token,
       page_size: "10",
       page: String(page),
@@ -97,27 +145,26 @@ router.post("/gis-search", async (req, res): Promise<void> => {
     const results = items.map((item) => {
       const { phone, website, email } = extractContacts(item.contact_groups);
 
-      // Build address from components or use name field
-      let address: string | null = item.address?.name ?? null;
-      if (!address && item.address?.components?.length) {
-        const parts = item.address.components
-          .map((c) => c.value ?? c.comment)
-          .filter(Boolean);
-        address = parts.join(", ") || null;
-      }
+      const components = item.address?.components ?? [];
+      const { fullAddress, city: itemCity } = extractAddress(components);
+      const address = item.address?.name ?? fullAddress;
 
-      // Prefer primary rubric
       const primaryRubric = item.rubrics?.find((r) => r.kind === "primary") ?? item.rubrics?.[0];
+      const allCategories = item.rubrics?.map((r) => r.name) ?? [];
+
+      const gisUrl = buildGisUrl(item, itemCity);
 
       return {
         id: item.id,
         name: item.name,
         address,
+        city: itemCity,
         phone,
         website,
         email,
         category: primaryRubric?.name ?? null,
-        gisUrl: item.url ?? null,
+        allCategories,
+        gisUrl,
       };
     });
 
