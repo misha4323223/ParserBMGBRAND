@@ -36,7 +36,7 @@ const GIS_EXAMPLE_QUERIES = [
 
 const STORAGE_KEY = "ai_search_state";
 const VK_STORAGE_KEY = "vk_search_state";
-const GIS_STORAGE_KEY = "gis_search_state";
+const GIS_STORAGE_KEY = "gis_search_state_v2";
 
 type SearchResult = {
   companyName: string;
@@ -84,10 +84,12 @@ type GisPlace = {
   id: string;
   name: string;
   address?: string | null;
+  city?: string | null;
   phone?: string | null;
   website?: string | null;
   email?: string | null;
   category?: string | null;
+  allCategories?: string[];
   gisUrl?: string | null;
 };
 
