@@ -102,24 +102,35 @@ type GisSavedState = {
   addedItems: string[];
 };
 
-export default function AiSearchPage() {
-  const [query, setQuery] = useState("");
-  const [savedResults, setSavedResults] = useState<SearchResult[] | null>(null);
-  const [savedExplanation, setSavedExplanation] = useState<string>("");
-  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+function loadFromStorage<T>(key: string, field: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed[field] ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-  const [vkQuery, setVkQuery] = useState("");
-  const [vkCity, setVkCity] = useState("");
-  const [vkGroups, setVkGroups] = useState<VkGroup[] | null>(null);
-  const [vkAddedItems, setVkAddedItems] = useState<Set<string>>(new Set());
+export default function AiSearchPage() {
+  const [query, setQuery] = useState<string>(() => loadFromStorage(STORAGE_KEY, "query", ""));
+  const [savedResults, setSavedResults] = useState<SearchResult[] | null>(() => loadFromStorage(STORAGE_KEY, "results", null));
+  const [savedExplanation, setSavedExplanation] = useState<string>(() => loadFromStorage(STORAGE_KEY, "explanation", ""));
+  const [addedItems, setAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(STORAGE_KEY, "addedItems", [])));
+
+  const [vkQuery, setVkQuery] = useState<string>(() => loadFromStorage(VK_STORAGE_KEY, "query", ""));
+  const [vkCity, setVkCity] = useState<string>(() => loadFromStorage(VK_STORAGE_KEY, "city", ""));
+  const [vkGroups, setVkGroups] = useState<VkGroup[] | null>(() => loadFromStorage(VK_STORAGE_KEY, "groups", null));
+  const [vkAddedItems, setVkAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(VK_STORAGE_KEY, "addedItems", [])));
   const [vkHasMore, setVkHasMore] = useState(false);
   const [vkTotalCount, setVkTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const [gisQuery, setGisQuery] = useState("");
-  const [gisCity, setGisCity] = useState("");
-  const [gisPlaces, setGisPlaces] = useState<GisPlace[] | null>(null);
-  const [gisAddedItems, setGisAddedItems] = useState<Set<string>>(new Set());
+  const [gisQuery, setGisQuery] = useState<string>(() => loadFromStorage(GIS_STORAGE_KEY, "query", ""));
+  const [gisCity, setGisCity] = useState<string>(() => loadFromStorage(GIS_STORAGE_KEY, "city", ""));
+  const [gisPlaces, setGisPlaces] = useState<GisPlace[] | null>(() => loadFromStorage(GIS_STORAGE_KEY, "places", null));
+  const [gisAddedItems, setGisAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(GIS_STORAGE_KEY, "addedItems", [])));
   const [gisHasMore, setGisHasMore] = useState(false);
   const [gisTotalCount, setGisTotalCount] = useState(0);
   const [gisPage, setGisPage] = useState(1);
@@ -129,35 +140,6 @@ export default function AiSearchPage() {
   const vkSearch = useVkSearchGroups();
   const gisSearch = useGisSearchPlaces();
   const createClient = useCreateClient();
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved: SavedState = JSON.parse(raw);
-        setQuery(saved.query ?? "");
-        setSavedResults(saved.results ?? null);
-        setSavedExplanation(saved.explanation ?? "");
-        setAddedItems(new Set(saved.addedItems ?? []));
-      }
-      const vkRaw = localStorage.getItem(VK_STORAGE_KEY);
-      if (vkRaw) {
-        const saved: VkSavedState = JSON.parse(vkRaw);
-        setVkQuery(saved.query ?? "");
-        setVkCity(saved.city ?? "");
-        setVkGroups(saved.groups ?? null);
-        setVkAddedItems(new Set(saved.addedItems ?? []));
-      }
-      const gisRaw = localStorage.getItem(GIS_STORAGE_KEY);
-      if (gisRaw) {
-        const saved: GisSavedState = JSON.parse(gisRaw);
-        setGisQuery(saved.query ?? "");
-        setGisCity(saved.city ?? "");
-        setGisPlaces(saved.places ?? null);
-        setGisAddedItems(new Set(saved.addedItems ?? []));
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     if (searchClients.isSuccess && searchClients.data) {
