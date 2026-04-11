@@ -318,6 +318,8 @@ components:
           type: ["integer", "null"]
         deliveryAddress:
           type: ["string", "null"]
+        manager:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -370,6 +372,8 @@ components:
           type: ["integer", "null"]
         deliveryAddress:
           type: ["string", "null"]
+        manager:
+          type: ["string", "null"]
       required:
         - companyName
         - status
@@ -412,6 +416,8 @@ components:
         discount:
           type: ["integer", "null"]
         deliveryAddress:
+          type: ["string", "null"]
+        manager:
           type: ["string", "null"]
 
     ClientStats:

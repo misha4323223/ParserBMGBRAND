@@ -66,18 +66,20 @@ type VkGroup = {
   photo?: string | null;
 };
 
+type Manager = "m1" | "m2";
+
 type SavedState = {
   query: string;
   results: SearchResult[];
   explanation: string;
-  addedItems: number[];
+  addedItems: string[];
 };
 
 type VkSavedState = {
   query: string;
   city: string;
   groups: VkGroup[];
-  addedItems: number[];
+  addedItems: string[];
 };
 
 type GisPlace = {
@@ -104,12 +106,12 @@ export default function AiSearchPage() {
   const [query, setQuery] = useState("");
   const [savedResults, setSavedResults] = useState<SearchResult[] | null>(null);
   const [savedExplanation, setSavedExplanation] = useState<string>("");
-  const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
 
   const [vkQuery, setVkQuery] = useState("");
   const [vkCity, setVkCity] = useState("");
   const [vkGroups, setVkGroups] = useState<VkGroup[] | null>(null);
-  const [vkAddedItems, setVkAddedItems] = useState<Set<number>>(new Set());
+  const [vkAddedItems, setVkAddedItems] = useState<Set<string>>(new Set());
   const [vkHasMore, setVkHasMore] = useState(false);
   const [vkTotalCount, setVkTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -271,7 +273,13 @@ export default function AiSearchPage() {
     gisSearch.mutate({ data: { query: gisQuery, city: gisCity || null, page: gisPage + 1 } });
   };
 
-  const handleAddGisToCRM = (id: string, place: GisPlace) => {
+  const MANAGERS: Record<Manager, { label: string; color: string }> = {
+    m1: { label: "Менеджер 1", color: "violet" },
+    m2: { label: "Менеджер 2", color: "amber" },
+  };
+
+  const handleAddGisToCRM = (id: string, place: GisPlace, manager: Manager) => {
+    const key = `${id}:${manager}`;
     createClient.mutate(
       {
         data: {
@@ -281,12 +289,13 @@ export default function AiSearchPage() {
           email: place.email ?? undefined,
           category: place.category ?? undefined,
           notes: place.address ? `Адрес: ${place.address}` : undefined,
+          manager: MANAGERS[manager].label,
           status: "prospect",
         },
       },
       {
         onSuccess: () => {
-          const next = new Set(gisAddedItems).add(id);
+          const next = new Set(gisAddedItems).add(key);
           setGisAddedItems(next);
           try {
             const raw = localStorage.getItem(GIS_STORAGE_KEY);
@@ -296,7 +305,7 @@ export default function AiSearchPage() {
               localStorage.setItem(GIS_STORAGE_KEY, JSON.stringify(saved));
             }
           } catch {}
-          toast.success(`${place.name} добавлен в CRM`);
+          toast.success(`${place.name} добавлен в CRM (${MANAGERS[manager].label})`);
         },
         onError: () => {
           toast.error("Не удалось добавить клиента");
@@ -305,7 +314,8 @@ export default function AiSearchPage() {
     );
   };
 
-  const handleAddToCRM = (index: number, result: SearchResult) => {
+  const handleAddToCRM = (index: number, result: SearchResult, manager: Manager) => {
+    const key = `${index}:${manager}`;
     createClient.mutate(
       {
         data: {
@@ -318,12 +328,13 @@ export default function AiSearchPage() {
           instagram: result.instagram ?? undefined,
           vk: result.vk ?? undefined,
           telegram: result.telegram ?? undefined,
+          manager: MANAGERS[manager].label,
           status: "prospect",
         },
       },
       {
         onSuccess: () => {
-          const next = new Set(addedItems).add(index);
+          const next = new Set(addedItems).add(key);
           setAddedItems(next);
           try {
             const raw = localStorage.getItem(STORAGE_KEY);
@@ -333,7 +344,7 @@ export default function AiSearchPage() {
               localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
             }
           } catch {}
-          toast.success(`${result.companyName} добавлен в CRM`);
+          toast.success(`${result.companyName} добавлен в CRM (${MANAGERS[manager].label})`);
         },
         onError: () => {
           toast.error("Не удалось добавить клиента");
@@ -342,7 +353,8 @@ export default function AiSearchPage() {
     );
   };
 
-  const handleAddVkToCRM = (index: number, group: VkGroup) => {
+  const handleAddVkToCRM = (index: number, group: VkGroup, manager: Manager) => {
+    const key = `${index}:${manager}`;
     createClient.mutate(
       {
         data: {
@@ -355,12 +367,13 @@ export default function AiSearchPage() {
           telegram: group.telegram ?? undefined,
           notes: group.description ?? undefined,
           vk: group.vkUrl,
+          manager: MANAGERS[manager].label,
           status: "prospect",
         },
       },
       {
         onSuccess: () => {
-          const next = new Set(vkAddedItems).add(index);
+          const next = new Set(vkAddedItems).add(key);
           setVkAddedItems(next);
           try {
             const raw = localStorage.getItem(VK_STORAGE_KEY);
@@ -370,7 +383,7 @@ export default function AiSearchPage() {
               localStorage.setItem(VK_STORAGE_KEY, JSON.stringify(saved));
             }
           } catch {}
-          toast.success(`${group.name} добавлен в CRM`);
+          toast.success(`${group.name} добавлен в CRM (${MANAGERS[manager].label})`);
         },
         onError: () => {
           toast.error("Не удалось добавить клиента");
@@ -495,7 +508,6 @@ export default function AiSearchPage() {
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {displayResults!.map((result, index) => {
-                      const isAdded = addedItems.has(index);
                       return (
                         <Card key={index} className="bg-card border-border h-full shadow-none rounded-sm">
                           <CardContent className="p-4 flex flex-col gap-3">
@@ -581,22 +593,39 @@ export default function AiSearchPage() {
                                   Источник
                                 </a>
                               )}
-                              <div className="ml-auto">
-                                {isAdded ? (
-                                  <div className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                              <div className="ml-auto flex items-center gap-1.5">
+                                {addedItems.has(`${index}:m1`) ? (
+                                  <div className="flex items-center gap-1 text-xs text-violet-400 font-medium">
                                     <CheckCircle className="h-3.5 w-3.5" />
-                                    В CRM
+                                    М1
                                   </div>
                                 ) : (
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-xs gap-1 rounded-sm"
-                                    onClick={() => handleAddToCRM(index, result)}
+                                    className="h-7 text-xs gap-1 rounded-sm border-violet-400/40 text-violet-400 hover:bg-violet-400/10 hover:border-violet-400"
+                                    onClick={() => handleAddToCRM(index, result, "m1")}
                                     disabled={createClient.isPending}
                                   >
                                     <Plus className="h-3 w-3" />
-                                    В CRM
+                                    М1
+                                  </Button>
+                                )}
+                                {addedItems.has(`${index}:m2`) ? (
+                                  <div className="flex items-center gap-1 text-xs text-amber-400 font-medium">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    М2
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs gap-1 rounded-sm border-amber-400/40 text-amber-400 hover:bg-amber-400/10 hover:border-amber-400"
+                                    onClick={() => handleAddToCRM(index, result, "m2")}
+                                    disabled={createClient.isPending}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    М2
                                   </Button>
                                 )}
                               </div>
@@ -705,7 +734,6 @@ export default function AiSearchPage() {
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {vkGroups!.map((group, index) => {
-                      const isAdded = vkAddedItems.has(index);
                       return (
                         <Card key={`${group.id}-${index}`} className="bg-card border-border h-full shadow-none rounded-sm">
                           <CardContent className="p-4 flex flex-col gap-3">
@@ -802,22 +830,39 @@ export default function AiSearchPage() {
                                 <ExternalLink className="h-3 w-3" />
                                 Открыть VK
                               </a>
-                              <div className="ml-auto">
-                                {isAdded ? (
-                                  <div className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                              <div className="ml-auto flex items-center gap-1.5">
+                                {vkAddedItems.has(`${index}:m1`) ? (
+                                  <div className="flex items-center gap-1 text-xs text-violet-400 font-medium">
                                     <CheckCircle className="h-3.5 w-3.5" />
-                                    В CRM
+                                    М1
                                   </div>
                                 ) : (
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-xs gap-1 rounded-sm"
-                                    onClick={() => handleAddVkToCRM(index, group)}
+                                    className="h-7 text-xs gap-1 rounded-sm border-violet-400/40 text-violet-400 hover:bg-violet-400/10 hover:border-violet-400"
+                                    onClick={() => handleAddVkToCRM(index, group, "m1")}
                                     disabled={createClient.isPending}
                                   >
                                     <Plus className="h-3 w-3" />
-                                    В CRM
+                                    М1
+                                  </Button>
+                                )}
+                                {vkAddedItems.has(`${index}:m2`) ? (
+                                  <div className="flex items-center gap-1 text-xs text-amber-400 font-medium">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    М2
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs gap-1 rounded-sm border-amber-400/40 text-amber-400 hover:bg-amber-400/10 hover:border-amber-400"
+                                    onClick={() => handleAddVkToCRM(index, group, "m2")}
+                                    disabled={createClient.isPending}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    М2
                                   </Button>
                                 )}
                               </div>
@@ -950,7 +995,6 @@ export default function AiSearchPage() {
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {gisPlaces.map((place) => {
-                      const isAdded = gisAddedItems.has(place.id);
                       const categories = place.allCategories?.length
                         ? place.allCategories
                         : place.category ? [place.category] : [];
@@ -1018,19 +1062,33 @@ export default function AiSearchPage() {
                                   Открыть в 2ГИС
                                 </a>
                               )}
-                              <div className="ml-auto">
-                                {isAdded ? (
-                                  <div className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                              <div className="ml-auto flex items-center gap-1.5">
+                                {gisAddedItems.has(`${place.id}:m1`) ? (
+                                  <div className="flex items-center gap-1 text-xs text-violet-400 font-medium">
                                     <CheckCircle className="h-3.5 w-3.5" />
-                                    В CRM
+                                    М1
                                   </div>
                                 ) : (
                                   <Button size="sm" variant="outline"
-                                    className="h-7 text-xs gap-1 rounded-sm"
-                                    onClick={() => handleAddGisToCRM(place.id, place)}
+                                    className="h-7 text-xs gap-1 rounded-sm border-violet-400/40 text-violet-400 hover:bg-violet-400/10 hover:border-violet-400"
+                                    onClick={() => handleAddGisToCRM(place.id, place, "m1")}
                                     disabled={createClient.isPending}>
                                     <Plus className="h-3 w-3" />
-                                    В CRM
+                                    М1
+                                  </Button>
+                                )}
+                                {gisAddedItems.has(`${place.id}:m2`) ? (
+                                  <div className="flex items-center gap-1 text-xs text-amber-400 font-medium">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    М2
+                                  </div>
+                                ) : (
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 text-xs gap-1 rounded-sm border-amber-400/40 text-amber-400 hover:bg-amber-400/10 hover:border-amber-400"
+                                    onClick={() => handleAddGisToCRM(place.id, place, "m2")}
+                                    disabled={createClient.isPending}>
+                                    <Plus className="h-3 w-3" />
+                                    М2
                                   </Button>
                                 )}
                               </div>

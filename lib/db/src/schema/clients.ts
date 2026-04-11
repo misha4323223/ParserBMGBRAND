@@ -21,6 +21,8 @@ export const clientsTable = pgTable("clients", {
   telegram: text("telegram"),
   whatsapp: text("whatsapp"),
   website: text("website"),
+  // Менеджер
+  manager: text("manager"),
   // Реквизиты и доп. информация
   inn: text("inn"),
   discount: integer("discount"),

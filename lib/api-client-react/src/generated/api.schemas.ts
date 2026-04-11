@@ -47,6 +47,8 @@ export interface Client {
   discount?: number | null;
   /** @nullable */
   deliveryAddress?: string | null;
+  /** @nullable */
+  manager?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +88,8 @@ export interface CreateClientBody {
   discount?: number | null;
   /** @nullable */
   deliveryAddress?: string | null;
+  /** @nullable */
+  manager?: string | null;
 }
 
 export interface UpdateClientBody {
@@ -123,6 +127,8 @@ export interface UpdateClientBody {
   discount?: number | null;
   /** @nullable */
   deliveryAddress?: string | null;
+  /** @nullable */
+  manager?: string | null;
 }
 
 export interface RegionCount {

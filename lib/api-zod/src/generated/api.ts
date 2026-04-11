@@ -46,6 +46,7 @@ export const ListClientsResponseItem = zod.object({
   inn: zod.string().nullish(),
   discount: zod.number().nullish(),
   deliveryAddress: zod.string().nullish(),
+  manager: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -73,6 +74,7 @@ export const CreateClientBody = zod.object({
   inn: zod.string().nullish(),
   discount: zod.number().nullish(),
   deliveryAddress: zod.string().nullish(),
+  manager: zod.string().nullish(),
 });
 
 /**
@@ -126,6 +128,7 @@ export const GetClientResponse = zod.object({
   inn: zod.string().nullish(),
   discount: zod.number().nullish(),
   deliveryAddress: zod.string().nullish(),
+  manager: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -156,6 +159,7 @@ export const UpdateClientBody = zod.object({
   inn: zod.string().nullish(),
   discount: zod.number().nullish(),
   deliveryAddress: zod.string().nullish(),
+  manager: zod.string().nullish(),
 });
 
 export const UpdateClientResponse = zod.object({
@@ -179,6 +183,7 @@ export const UpdateClientResponse = zod.object({
   inn: zod.string().nullish(),
   discount: zod.number().nullish(),
   deliveryAddress: zod.string().nullish(),
+  manager: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

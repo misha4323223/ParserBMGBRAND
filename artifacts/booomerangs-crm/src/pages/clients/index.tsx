@@ -105,12 +105,27 @@ export default function ClientsPage() {
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <span className="font-semibold text-foreground leading-tight">{client.companyName}</span>
-                  <Badge
-                    variant="outline"
-                    className={cn("shrink-0 rounded-sm border text-xs font-normal", getStatusColor(client.status))}
-                  >
-                    {getStatusLabel(client.status)}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {client.manager && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "rounded-sm border text-xs font-normal",
+                          client.manager === "Менеджер 1"
+                            ? "border-violet-400/40 text-violet-400"
+                            : "border-amber-400/40 text-amber-400"
+                        )}
+                      >
+                        {client.manager}
+                      </Badge>
+                    )}
+                    <Badge
+                      variant="outline"
+                      className={cn("rounded-sm border text-xs font-normal", getStatusColor(client.status))}
+                    >
+                      {getStatusLabel(client.status)}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1 text-sm text-muted-foreground">
                   {(client.city || client.region) && (
@@ -144,6 +159,7 @@ export default function ClientsPage() {
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="font-medium text-muted-foreground w-[250px]">Компания</TableHead>
                   <TableHead className="font-medium text-muted-foreground">Статус</TableHead>
+                  <TableHead className="font-medium text-muted-foreground">Менеджер</TableHead>
                   <TableHead className="font-medium text-muted-foreground">Локация</TableHead>
                   <TableHead className="font-medium text-muted-foreground">Контакт</TableHead>
                   <TableHead className="font-medium text-muted-foreground">Категория</TableHead>
@@ -157,6 +173,7 @@ export default function ClientsPage() {
                       <TableCell><div className="h-5 w-32 bg-muted animate-pulse rounded" /></TableCell>
                       <TableCell><div className="h-5 w-20 bg-muted animate-pulse rounded" /></TableCell>
                       <TableCell><div className="h-5 w-24 bg-muted animate-pulse rounded" /></TableCell>
+                      <TableCell><div className="h-5 w-24 bg-muted animate-pulse rounded" /></TableCell>
                       <TableCell><div className="h-5 w-28 bg-muted animate-pulse rounded" /></TableCell>
                       <TableCell><div className="h-5 w-20 bg-muted animate-pulse rounded" /></TableCell>
                       <TableCell><div className="h-5 w-20 bg-muted animate-pulse rounded ml-auto" /></TableCell>
@@ -164,7 +181,7 @@ export default function ClientsPage() {
                   ))
                 ) : clients?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                       Ничего не найдено. Попробуйте изменить параметры поиска.
                     </TableCell>
                   </TableRow>
@@ -185,6 +202,21 @@ export default function ClientsPage() {
                         >
                           {getStatusLabel(client.status)}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {client.manager ? (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-sm border font-normal text-xs",
+                              client.manager === "Менеджер 1"
+                                ? "border-violet-400/40 text-violet-400"
+                                : "border-amber-400/40 text-amber-400"
+                            )}
+                          >
+                            {client.manager}
+                          </Badge>
+                        ) : "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {client.city ? `${client.city}${client.region ? `, ${client.region}` : ""}` : "—"}

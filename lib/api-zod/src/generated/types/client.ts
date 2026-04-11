@@ -44,6 +44,8 @@ export interface Client {
   discount?: number | null;
   /** @nullable */
   deliveryAddress?: string | null;
+  /** @nullable */
+  manager?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

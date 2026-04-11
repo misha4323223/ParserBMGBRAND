@@ -41,4 +41,6 @@ export interface CreateClientBody {
   discount?: number | null;
   /** @nullable */
   deliveryAddress?: string | null;
+  /** @nullable */
+  manager?: string | null;
 }
