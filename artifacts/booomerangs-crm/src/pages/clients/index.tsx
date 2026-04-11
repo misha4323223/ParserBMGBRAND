@@ -3,7 +3,7 @@ import { useListClients } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, MapPin, Phone, Download } from "lucide-react";
+import { Search, Plus, MapPin, Phone, Download, Calendar } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -145,6 +145,14 @@ export default function ClientsPage() {
                       {client.category}
                     </Badge>
                   )}
+                  {client.lastOrderDate && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+                      <span className="text-xs text-primary/80 font-medium">
+                        Контакт: {new Date(client.lastOrderDate).toLocaleDateString("ru-RU")}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
@@ -163,7 +171,7 @@ export default function ClientsPage() {
                   <TableHead className="font-medium text-muted-foreground">Локация</TableHead>
                   <TableHead className="font-medium text-muted-foreground">Контакт</TableHead>
                   <TableHead className="font-medium text-muted-foreground">Категория</TableHead>
-                  <TableHead className="font-medium text-muted-foreground text-right">Посл. заказ</TableHead>
+                  <TableHead className="font-medium text-muted-foreground text-right">Дата контакта</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

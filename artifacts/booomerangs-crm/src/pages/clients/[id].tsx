@@ -89,6 +89,9 @@ export default function ClientDetailPage() {
         inn: client.inn || "",
         discount: client.discount || 0,
         deliveryAddress: client.deliveryAddress || "",
+        lastOrderDate: client.lastOrderDate
+          ? new Date(client.lastOrderDate).toISOString().split("T")[0]
+          : "",
       });
     }
   }, [client]);
@@ -328,11 +331,22 @@ export default function ClientDetailPage() {
                   <Field label="Категория" icon={Tag} value={client.category} fieldKey="category" />
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" /> Последний заказ
+                      <Calendar className="h-3.5 w-3.5" /> Дата контакта
                     </p>
-                    <p className="font-medium text-sm">
-                      {client.lastOrderDate ? new Date(client.lastOrderDate).toLocaleDateString("ru-RU") : "Нет данных"}
-                    </p>
+                    {isEditing ? (
+                      <Input
+                        type="date"
+                        value={formData.lastOrderDate as string}
+                        onChange={(e) => handleChange("lastOrderDate", e.target.value)}
+                        className="h-8 bg-background border-border text-sm"
+                      />
+                    ) : (
+                      <p className="font-medium text-sm">
+                        {client.lastOrderDate
+                          ? new Date(client.lastOrderDate).toLocaleDateString("ru-RU")
+                          : <span className="text-muted-foreground italic">Не указано</span>}
+                      </p>
+                    )}
                   </div>
                   <Field label="ИНН" icon={Hash} value={client.inn} fieldKey="inn" />
                   <div className="space-y-1">
