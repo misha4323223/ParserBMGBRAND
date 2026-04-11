@@ -140,6 +140,12 @@ export default function ClientsPage() {
                       <span>{client.phone}</span>
                     </div>
                   )}
+                  {client.lastContactDate && (
+                    <div className="flex items-center gap-1.5 text-primary/80">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      <span>Контакт: {new Date(client.lastContactDate).toLocaleDateString("ru-RU")}</span>
+                    </div>
+                  )}
                   {client.category && (
                     <Badge variant="outline" className="w-fit rounded-sm border-border text-xs font-normal mt-1">
                       {client.category}

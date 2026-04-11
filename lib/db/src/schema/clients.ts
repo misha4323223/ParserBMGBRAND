@@ -15,6 +15,7 @@ export const clientsTable = pgTable("clients", {
   notes: text("notes"),
   orderVolume: integer("order_volume"),
   lastOrderDate: timestamp("last_order_date", { withTimezone: true }),
+  lastContactDate: timestamp("last_contact_date", { withTimezone: true }),
   // Социальные сети
   instagram: text("instagram"),
   vk: text("vk"),

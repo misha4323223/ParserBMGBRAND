@@ -29,6 +29,8 @@ export interface Client {
   /** @nullable */
   lastOrderDate?: Date | null;
   /** @nullable */
+  lastContactDate?: Date | null;
+  /** @nullable */
   instagram?: string | null;
   /** @nullable */
   vk?: string | null;

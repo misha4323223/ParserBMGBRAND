@@ -81,6 +81,9 @@ export default function ClientDetailPage() {
         status: client.status || "prospect",
         notes: client.notes || "",
         orderVolume: client.orderVolume || 0,
+        lastContactDate: client.lastContactDate
+          ? new Date(client.lastContactDate).toISOString().split("T")[0]
+          : "",
         instagram: client.instagram || "",
         vk: client.vk || "",
         telegram: client.telegram || "",
@@ -121,7 +124,11 @@ export default function ClientDetailPage() {
       phone: client.phone || "", email: client.email || "", city: client.city || "",
       region: client.region || "", category: client.category || "",
       status: client.status || "prospect", notes: client.notes || "",
-      orderVolume: client.orderVolume || 0, instagram: client.instagram || "",
+      orderVolume: client.orderVolume || 0,
+      lastContactDate: client.lastContactDate
+        ? new Date(client.lastContactDate).toISOString().split("T")[0]
+        : "",
+      instagram: client.instagram || "",
       vk: client.vk || "", telegram: client.telegram || "", whatsapp: client.whatsapp || "",
       website: client.website || "", inn: client.inn || "",
       discount: client.discount || 0, deliveryAddress: client.deliveryAddress || "",
@@ -336,14 +343,14 @@ export default function ClientDetailPage() {
                     {isEditing ? (
                       <Input
                         type="date"
-                        value={formData.lastOrderDate as string}
-                        onChange={(e) => handleChange("lastOrderDate", e.target.value)}
+                        value={formData.lastContactDate as string}
+                        onChange={(e) => handleChange("lastContactDate", e.target.value || null)}
                         className="h-8 bg-background border-border text-sm"
                       />
                     ) : (
                       <p className="font-medium text-sm">
-                        {client.lastOrderDate
-                          ? new Date(client.lastOrderDate).toLocaleDateString("ru-RU")
+                        {client.lastContactDate
+                          ? new Date(client.lastContactDate).toLocaleDateString("ru-RU")
                           : <span className="text-muted-foreground italic">Не указано</span>}
                       </p>
                     )}

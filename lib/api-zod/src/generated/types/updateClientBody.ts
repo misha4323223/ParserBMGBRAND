@@ -26,6 +26,8 @@ export interface UpdateClientBody {
   /** @nullable */
   orderVolume?: number | null;
   /** @nullable */
+  lastContactDate?: Date | null;
+  /** @nullable */
   instagram?: string | null;
   /** @nullable */
   vk?: string | null;
