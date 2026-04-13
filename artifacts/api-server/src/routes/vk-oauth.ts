@@ -32,7 +32,9 @@ router.post("/vk-oauth/token", async (req, res) => {
     res.status(400).json({ error: "token required" });
     return;
   }
-  await setVkUserToken(token);
+  // Strip any extra URL params that users may accidentally paste (e.g. &expires_in=0)
+  const cleanToken = token.trim().split("&")[0].split("?")[0];
+  await setVkUserToken(cleanToken);
   res.json({ ok: true });
 });
 
