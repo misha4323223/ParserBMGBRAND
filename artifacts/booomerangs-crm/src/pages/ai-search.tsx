@@ -216,7 +216,10 @@ export default function AiSearchPage() {
 
   const handleVkConnect = () => {
     setVkConnecting(true);
-    const popup = window.open("/api/vk-oauth/start", "vk_oauth", "width=600,height=600");
+    const domain = window.location.hostname;
+    const redirectUri = `https://${domain}/vk-callback.html`;
+    const oauthUrl = `https://oauth.vk.com/authorize?client_id=54540889&redirect_uri=${encodeURIComponent(redirectUri)}&scope=groups&response_type=token&v=5.199&display=page`;
+    const popup = window.open(oauthUrl, "vk_oauth", "width=600,height=600");
     const onMessage = (e: MessageEvent) => {
       if (e.data?.type === "vk_oauth_success") {
         setVkConnected(true);
