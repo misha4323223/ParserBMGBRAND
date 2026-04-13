@@ -126,6 +126,8 @@ export default function AiSearchPage() {
   const [vkHasMore, setVkHasMore] = useState(false);
   const [vkTotalCount, setVkTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [vkConnected, setVkConnected] = useState<boolean | null>(null);
+  const [vkConnecting, setVkConnecting] = useState(false);
 
   const [gisQuery, setGisQuery] = useState<string>(() => loadFromStorage(GIS_STORAGE_KEY, "query", ""));
   const [gisCity, setGisCity] = useState<string>(() => loadFromStorage(GIS_STORAGE_KEY, "city", ""));
@@ -204,6 +206,49 @@ export default function AiSearchPage() {
       } catch {}
     }
   }, [gisSearch.isSuccess, gisSearch.data]);
+
+  useEffect(() => {
+    fetch("/api/vk-oauth/status")
+      .then((r) => r.json())
+      .then((d: { connected: boolean }) => setVkConnected(d.connected))
+      .catch(() => setVkConnected(false));
+  }, []);
+
+  const handleVkConnect = () => {
+    setVkConnecting(true);
+    const popup = window.open("/api/vk-oauth/start", "vk_oauth", "width=600,height=600");
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "vk_oauth_success") {
+        setVkConnected(true);
+        setVkConnecting(false);
+        toast.success("ВКонтакте успешно подключён!");
+        window.removeEventListener("message", onMessage);
+      } else if (e.data?.type === "vk_oauth_error") {
+        setVkConnected(false);
+        setVkConnecting(false);
+        toast.error(`Ошибка подключения ВКонтакте: ${e.data.error}`);
+        window.removeEventListener("message", onMessage);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    const timer = setInterval(() => {
+      if (popup?.closed) {
+        clearInterval(timer);
+        setVkConnecting(false);
+        window.removeEventListener("message", onMessage);
+        fetch("/api/vk-oauth/status")
+          .then((r) => r.json())
+          .then((d: { connected: boolean }) => setVkConnected(d.connected))
+          .catch(() => {});
+      }
+    }, 500);
+  };
+
+  const handleVkDisconnect = async () => {
+    await fetch("/api/vk-oauth/disconnect", { method: "POST" });
+    setVkConnected(false);
+    toast.success("ВКонтакте отключён");
+  };
 
   const handleSearch = (e?: React.FormEvent, q?: string) => {
     e?.preventDefault();
@@ -624,6 +669,34 @@ export default function AiSearchPage() {
 
           {/* === VK TAB === */}
           <TabsContent value="vk" className="flex flex-col gap-5">
+            {vkConnected === false && (
+              <div className="p-4 bg-blue-500/10 border border-blue-400/30 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-400">ВКонтакте не подключён</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Для поиска групп нужна авторизация через ВК</p>
+                </div>
+                <Button
+                  onClick={handleVkConnect}
+                  disabled={vkConnecting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 gap-2"
+                  size="sm"
+                >
+                  {vkConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="font-bold">VK</span>}
+                  {vkConnecting ? "Подключение..." : "Войти через ВКонтакте"}
+                </Button>
+              </div>
+            )}
+            {vkConnected === true && (
+              <div className="px-4 py-2 bg-green-500/10 border border-green-400/20 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-400" />
+                  <span className="text-sm text-green-400 font-medium">ВКонтакте подключён</span>
+                </div>
+                <button onClick={handleVkDisconnect} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                  Отключить
+                </button>
+              </div>
+            )}
             <Card className="bg-card border-blue-400/20 rounded-lg overflow-hidden">
               <CardContent className="p-3 flex flex-col gap-2">
                 <form onSubmit={handleVkSearch} className="flex flex-col gap-2">

@@ -1,14 +1,11 @@
 import { Router, type IRouter } from "express";
 import { VkSearchGroupsBody } from "@workspace/api-zod";
+import { getVkUserToken } from "../lib/vk-token-store";
 
 const router: IRouter = Router();
 
 const VK_API = "https://api.vk.com/method";
 const VK_VERSION = "5.199";
-
-function getToken(): string {
-  return process.env.VK_ACCESS_TOKEN ?? "";
-}
 
 interface VkGroup {
   id: number;
@@ -70,25 +67,15 @@ function extractWebsite(g: VkGroup): string | null {
   return null;
 }
 
-async function vkRequest(method: string, params: Record<string, string | number>) {
-  const token = getToken().trim();
+async function vkRequest(token: string, method: string, params: Record<string, string | number>) {
   const url = new URL(`${VK_API}/${method}`);
   url.searchParams.set("v", VK_VERSION);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, String(v));
   }
 
-  const isNewFormat = token.startsWith("vk1.");
-
-  let res: Response;
-  if (isNewFormat) {
-    res = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } else {
-    url.searchParams.set("access_token", token);
-    res = await fetch(url.toString());
-  }
+  url.searchParams.set("access_token", token);
+  const res = await fetch(url.toString());
 
   const json = await res.json() as { response?: unknown; error?: { error_msg: string } };
   if (json.error) throw new Error(`VK API error: ${json.error.error_msg}`);
@@ -96,9 +83,9 @@ async function vkRequest(method: string, params: Record<string, string | number>
 }
 
 router.post("/vk-search", async (req, res): Promise<void> => {
-  const token = getToken();
+  const token = await getVkUserToken();
   if (!token) {
-    res.status(503).json({ error: "VK_ACCESS_TOKEN не установлен" });
+    res.status(503).json({ error: "VK не подключён. Пожалуйста, авторизуйтесь через ВКонтакте." });
     return;
   }
 
@@ -115,7 +102,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
   try {
     const FIELDS = "description,city,links,site,members_count,photo_200,status";
 
-    const searchRes = await vkRequest("groups.search", {
+    const searchRes = await vkRequest(token, "groups.search", {
       q: searchQuery,
       type: "group",
       count: PAGE_SIZE,
@@ -132,7 +119,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
     }
 
     const ids = groups.map((g) => g.id).join(",");
-    const detailRes = await vkRequest("groups.getById", {
+    const detailRes = await vkRequest(token, "groups.getById", {
       group_ids: ids,
       fields: FIELDS,
     }) as { groups: VkGroup[] };
