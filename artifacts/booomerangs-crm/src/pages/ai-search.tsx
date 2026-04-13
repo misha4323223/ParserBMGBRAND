@@ -128,6 +128,8 @@ export default function AiSearchPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [vkConnected, setVkConnected] = useState<boolean | null>(null);
   const [vkConnecting, setVkConnecting] = useState(false);
+  const [vkTokenInput, setVkTokenInput] = useState("");
+  const [vkTokenSaving, setVkTokenSaving] = useState(false);
 
   const [gisQuery, setGisQuery] = useState<string>(() => loadFromStorage(GIS_STORAGE_KEY, "query", ""));
   const [gisCity, setGisCity] = useState<string>(() => loadFromStorage(GIS_STORAGE_KEY, "city", ""));
@@ -214,37 +216,28 @@ export default function AiSearchPage() {
       .catch(() => setVkConnected(false));
   }, []);
 
-  const handleVkConnect = () => {
-    setVkConnecting(true);
-    const domain = window.location.hostname;
-    const redirectUri = `https://${domain}/vk-callback.html`;
-    const oauthUrl = `https://oauth.vk.com/authorize?client_id=54540889&redirect_uri=${encodeURIComponent(redirectUri)}&scope=groups&response_type=token&v=5.199&display=page`;
-    const popup = window.open(oauthUrl, "vk_oauth", "width=600,height=600");
-    const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === "vk_oauth_success") {
+  const handleVkSaveToken = async () => {
+    const token = vkTokenInput.trim();
+    if (!token) return;
+    setVkTokenSaving(true);
+    try {
+      const r = await fetch("/api/vk-oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (r.ok) {
         setVkConnected(true);
-        setVkConnecting(false);
+        setVkTokenInput("");
         toast.success("ВКонтакте успешно подключён!");
-        window.removeEventListener("message", onMessage);
-      } else if (e.data?.type === "vk_oauth_error") {
-        setVkConnected(false);
-        setVkConnecting(false);
-        toast.error(`Ошибка подключения ВКонтакте: ${e.data.error}`);
-        window.removeEventListener("message", onMessage);
+      } else {
+        toast.error("Не удалось сохранить токен");
       }
-    };
-    window.addEventListener("message", onMessage);
-    const timer = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(timer);
-        setVkConnecting(false);
-        window.removeEventListener("message", onMessage);
-        fetch("/api/vk-oauth/status")
-          .then((r) => r.json())
-          .then((d: { connected: boolean }) => setVkConnected(d.connected))
-          .catch(() => {});
-      }
-    }, 500);
+    } catch {
+      toast.error("Ошибка соединения с сервером");
+    } finally {
+      setVkTokenSaving(false);
+    }
   };
 
   const handleVkDisconnect = async () => {
@@ -673,20 +666,39 @@ export default function AiSearchPage() {
           {/* === VK TAB === */}
           <TabsContent value="vk" className="flex flex-col gap-5">
             {vkConnected === false && (
-              <div className="p-4 bg-blue-500/10 border border-blue-400/30 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="p-4 bg-blue-500/10 border border-blue-400/30 rounded-lg flex flex-col gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-blue-400">ВКонтакте не подключён</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Для поиска групп нужна авторизация через ВК</p>
+                  <p className="text-sm font-semibold text-blue-400 mb-1">ВКонтакте не подключён</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Откройте эту ссылку в браузере (новая вкладка), войдите в ВК, скопируйте значение <span className="font-mono text-blue-400">access_token</span> из адресной строки и вставьте ниже:
+                  </p>
+                  <a
+                    href={`https://oauth.vk.com/authorize?client_id=54540889&display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=groups&response_type=token&v=5.199`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-2 text-xs text-blue-400 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Получить токен ВКонтакте
+                  </a>
                 </div>
-                <Button
-                  onClick={handleVkConnect}
-                  disabled={vkConnecting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 gap-2"
-                  size="sm"
-                >
-                  {vkConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="font-bold">VK</span>}
-                  {vkConnecting ? "Подключение..." : "Войти через ВКонтакте"}
-                </Button>
+                <div className="flex gap-2">
+                  <Input
+                    value={vkTokenInput}
+                    onChange={(e) => setVkTokenInput(e.target.value)}
+                    placeholder="Вставьте access_token..."
+                    className="border-blue-400/30 focus-visible:ring-blue-400/30 text-sm"
+                    onKeyDown={(e) => { if (e.key === "Enter") handleVkSaveToken(); }}
+                  />
+                  <Button
+                    onClick={handleVkSaveToken}
+                    disabled={!vkTokenInput.trim() || vkTokenSaving}
+                    className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                    size="sm"
+                  >
+                    {vkTokenSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Подключить"}
+                  </Button>
+                </div>
               </div>
             )}
             {vkConnected === true && (
