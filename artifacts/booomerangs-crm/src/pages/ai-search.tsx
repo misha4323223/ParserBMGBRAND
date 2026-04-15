@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/layout/app-layout";
-import { useAiSearchClients, useVkSearchGroups, useGisSearchPlaces, useCreateClient } from "@workspace/api-client-react";
+import { useAiSearchClients, useVkSearchGroups, useGisSearchPlaces, useCreateClient, useListClients } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -141,6 +141,13 @@ export default function AiSearchPage() {
   const vkSearch = useVkSearchGroups();
   const gisSearch = useGisSearchPlaces();
   const createClient = useCreateClient();
+  const clientsList = useListClients({ limit: 10000 });
+
+  const vkCrmUrls = new Set(
+    (clientsList.data?.clients ?? [])
+      .map((c: { vk?: string | null }) => c.vk?.toLowerCase().replace(/\/$/, "") ?? "")
+      .filter(Boolean)
+  );
 
   useEffect(() => {
     if (searchClients.isSuccess && searchClients.data) {
@@ -380,6 +387,7 @@ export default function AiSearchPage() {
         onSuccess: () => {
           const next = new Set(vkAddedItems).add(key);
           setVkAddedItems(next);
+          clientsList.refetch();
           try {
             const raw = localStorage.getItem(VK_STORAGE_KEY);
             if (raw) {
@@ -882,39 +890,48 @@ export default function AiSearchPage() {
                                 Открыть VK
                               </a>
                               <div className="ml-auto flex items-center gap-1.5">
-                                {vkAddedItems.has(`${index}:m1`) ? (
-                                  <div className="flex items-center gap-1 text-xs text-violet-400 font-medium">
+                                {vkCrmUrls.has(group.vkUrl.toLowerCase().replace(/\/$/, "")) ? (
+                                  <div className="flex items-center gap-1.5 text-xs text-primary font-medium px-2 py-1 rounded-sm border border-primary/30 bg-primary/5">
                                     <CheckCircle className="h-3.5 w-3.5" />
-                                    М1
+                                    В CRM
                                   </div>
                                 ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs gap-1 rounded-sm border-violet-400/40 text-violet-400 hover:bg-violet-400/10 hover:border-violet-400"
-                                    onClick={() => handleAddVkToCRM(index, group, "m1")}
-                                    disabled={createClient.isPending}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                    М1
-                                  </Button>
-                                )}
-                                {vkAddedItems.has(`${index}:m2`) ? (
-                                  <div className="flex items-center gap-1 text-xs text-amber-400 font-medium">
-                                    <CheckCircle className="h-3.5 w-3.5" />
-                                    М2
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs gap-1 rounded-sm border-amber-400/40 text-amber-400 hover:bg-amber-400/10 hover:border-amber-400"
-                                    onClick={() => handleAddVkToCRM(index, group, "m2")}
-                                    disabled={createClient.isPending}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                    М2
-                                  </Button>
+                                  <>
+                                    {vkAddedItems.has(`${index}:m1`) ? (
+                                      <div className="flex items-center gap-1 text-xs text-violet-400 font-medium">
+                                        <CheckCircle className="h-3.5 w-3.5" />
+                                        М1
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs gap-1 rounded-sm border-violet-400/40 text-violet-400 hover:bg-violet-400/10 hover:border-violet-400"
+                                        onClick={() => handleAddVkToCRM(index, group, "m1")}
+                                        disabled={createClient.isPending}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                        М1
+                                      </Button>
+                                    )}
+                                    {vkAddedItems.has(`${index}:m2`) ? (
+                                      <div className="flex items-center gap-1 text-xs text-amber-400 font-medium">
+                                        <CheckCircle className="h-3.5 w-3.5" />
+                                        М2
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs gap-1 rounded-sm border-amber-400/40 text-amber-400 hover:bg-amber-400/10 hover:border-amber-400"
+                                        onClick={() => handleAddVkToCRM(index, group, "m2")}
+                                        disabled={createClient.isPending}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                        М2
+                                      </Button>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
