@@ -137,20 +137,18 @@ async function buildVkSearchQueries(userQuery: string, city: string | null): Pro
   return [base];
 }
 
-async function filterRelevantGroups(
-  groups: Array<{ id: number; name: string; description: string | null }>,
+async function filterChunk(
+  chunk: Array<{ id: number; name: string; description: string | null }>,
   userQuery: string
 ): Promise<Set<number>> {
-  if (groups.length === 0) return new Set();
-
   try {
-    const list = groups
+    const list = chunk
       .map((g, i) => `${i + 1}. "${g.name}" — ${g.description?.slice(0, 150) ?? "нет описания"}`)
       .join("\n");
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 300,
+      max_tokens: 600,
       messages: [
         {
           role: "user",
@@ -173,13 +171,32 @@ ${list}
     const match = rawText.match(/\[[\s\S]*?\]/);
     if (match) {
       const indices = JSON.parse(match[0]) as number[];
-      return new Set(indices.map((i) => groups[i - 1]?.id).filter(Boolean));
+      return new Set(indices.map((i) => chunk[i - 1]?.id).filter(Boolean));
     }
   } catch (err) {
-    console.error("AI filter error:", err);
+    console.error("AI filter chunk error:", err);
+  }
+  return new Set(chunk.map((g) => g.id));
+}
+
+async function filterRelevantGroups(
+  groups: Array<{ id: number; name: string; description: string | null }>,
+  userQuery: string
+): Promise<Set<number>> {
+  if (groups.length === 0) return new Set();
+
+  const CHUNK_SIZE = 100;
+  const chunks: Array<typeof groups> = [];
+  for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
+    chunks.push(groups.slice(i, i + CHUNK_SIZE));
   }
 
-  return new Set(groups.map((g) => g.id));
+  const results = await Promise.all(chunks.map((chunk) => filterChunk(chunk, userQuery)));
+  const merged = new Set<number>();
+  for (const set of results) {
+    for (const id of set) merged.add(id);
+  }
+  return merged;
 }
 
 router.post("/vk-search", async (req, res): Promise<void> => {
@@ -196,7 +213,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
   }
 
   const { query, city } = parsed.data;
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 100;
   const FIELDS = "description,city,links,site,members_count,photo_200,status";
 
   try {
@@ -237,13 +254,23 @@ router.post("/vk-search", async (req, res): Promise<void> => {
       return;
     }
 
-    const ids = groups.map((g) => g.id).join(",");
-    const detailRes = await vkRequest(token, "groups.getById", {
-      group_ids: ids,
-      fields: FIELDS,
-    }) as { groups: VkGroup[] };
+    const DETAIL_BATCH = 200;
+    const allIds = groups.map((g) => g.id);
+    const detailBatches: VkGroup[] = [];
+    for (let i = 0; i < allIds.length; i += DETAIL_BATCH) {
+      const batchIds = allIds.slice(i, i + DETAIL_BATCH).join(",");
+      try {
+        const detailRes = await vkRequest(token, "groups.getById", {
+          group_ids: batchIds,
+          fields: FIELDS,
+        }) as { groups: VkGroup[] };
+        detailBatches.push(...(detailRes?.groups ?? []));
+      } catch (err) {
+        console.error("groups.getById batch error:", err);
+      }
+    }
 
-    const detailed: VkGroup[] = detailRes?.groups ?? groups;
+    const detailed: VkGroup[] = detailBatches.length > 0 ? detailBatches : groups;
 
     const forFilter = detailed.map((g) => ({
       id: g.id,
