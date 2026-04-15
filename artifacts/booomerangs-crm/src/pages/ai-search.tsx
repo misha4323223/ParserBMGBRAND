@@ -255,7 +255,6 @@ export default function AiSearchPage() {
     if (q) setVkQuery(q);
     setVkAddedItems(new Set());
     setVkGroups(null);
-    setVkTotalCount(0);
     vkSearch.mutate({ data: { query: searchQuery, city: vkCity || null, offset: 0 } });
   };
 
