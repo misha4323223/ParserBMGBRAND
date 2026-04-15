@@ -151,14 +151,14 @@ export default function ClientsPage() {
                       {client.category}
                     </Badge>
                   )}
-                  {client.lastOrderDate && (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/60" />
-                      <span className="text-xs text-primary/80 font-medium">
-                        Контакт: {new Date(client.lastOrderDate).toLocaleDateString("ru-RU")}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Calendar className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+                    <span className={`text-xs font-medium ${client.lastOrderDate ? "text-primary/80" : "text-muted-foreground/60"}`}>
+                      {client.lastOrderDate
+                        ? new Date(client.lastOrderDate).toLocaleDateString("ru-RU")
+                        : new Date(client.createdAt).toLocaleDateString("ru-RU")}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))
@@ -248,10 +248,10 @@ export default function ClientsPage() {
                           </Badge>
                         ) : "—"}
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground text-sm">
+                      <TableCell className="text-right text-sm">
                         {client.lastOrderDate
-                          ? new Date(client.lastOrderDate).toLocaleDateString("ru-RU")
-                          : "—"}
+                          ? <span className="text-foreground">{new Date(client.lastOrderDate).toLocaleDateString("ru-RU")}</span>
+                          : <span className="text-muted-foreground/60">{new Date(client.createdAt).toLocaleDateString("ru-RU")}</span>}
                       </TableCell>
                     </TableRow>
                   ))
