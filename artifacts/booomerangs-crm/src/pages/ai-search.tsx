@@ -125,6 +125,7 @@ export default function AiSearchPage() {
   const [vkAddedItems, setVkAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(VK_STORAGE_KEY, "addedItems", [])));
   const [vkHasMore, setVkHasMore] = useState(false);
   const [vkTotalCount, setVkTotalCount] = useState(0);
+  const [vkNextOffset, setVkNextOffset] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [vkConnected, setVkConnected] = useState<boolean | null>(null);
   const [vkConnecting, setVkConnecting] = useState(false);
@@ -171,6 +172,7 @@ export default function AiSearchPage() {
       setVkGroups((prev) => incoming === 0 ? newGroups : [...(prev ?? []), ...newGroups]);
       setVkHasMore(data.hasMore ?? false);
       setVkTotalCount(data.totalCount ?? 0);
+      setVkNextOffset((data as { nextOffset?: number }).nextOffset ?? (incoming + newGroups.length));
       setIsLoadingMore(false);
 
       try {
@@ -265,15 +267,15 @@ export default function AiSearchPage() {
     setVkGroups(null);
     setVkHasMore(false);
     setVkTotalCount(0);
+    setVkNextOffset(0);
     setIsLoadingMore(false);
     vkSearch.mutate({ data: { query: searchQuery, city: vkCity || null, offset: 0 } });
   };
 
   const handleLoadMore = () => {
     if (!vkQuery.trim() || vkSearch.isPending) return;
-    const offset = vkGroups?.length ?? 0;
     setIsLoadingMore(true);
-    vkSearch.mutate({ data: { query: vkQuery, city: vkCity || null, offset } });
+    vkSearch.mutate({ data: { query: vkQuery, city: vkCity || null, offset: vkNextOffset } });
   };
 
   const handleGisSearch = (e?: React.FormEvent, q?: string) => {

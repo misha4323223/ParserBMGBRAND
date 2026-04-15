@@ -293,7 +293,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
     const nextOffset = offset + groups.length;
     const hasMore = nextOffset < totalCount;
 
-    res.json({ groups: result, query, total: result.length, totalCount, hasMore, offset });
+    res.json({ groups: result, query, total: result.length, totalCount, hasMore, offset, nextOffset });
   } catch (err) {
     console.error("VK search error:", err);
     res.status(500).json({ error: err instanceof Error ? err.message : "Ошибка VK API" });
