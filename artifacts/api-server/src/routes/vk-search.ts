@@ -83,6 +83,25 @@ async function vkRequest(token: string, method: string, params: Record<string, s
   return json.response;
 }
 
+async function getCityId(token: string, cityName: string): Promise<number | null> {
+  try {
+    const res = await vkRequest(token, "database.getCities", {
+      country_id: 1,
+      q: cityName,
+      need_all: 0,
+      count: 1,
+    }) as { items: Array<{ id: number; title: string }> };
+    const found = res?.items?.[0];
+    if (found) {
+      console.log(`VK city lookup: "${cityName}" → id=${found.id} (${found.title})`);
+      return found.id;
+    }
+  } catch (err) {
+    console.error("City lookup failed:", err);
+  }
+  return null;
+}
+
 async function buildVkSearchQueries(userQuery: string, city: string | null): Promise<string[]> {
   try {
     const message = await anthropic.messages.create({
@@ -184,9 +203,12 @@ router.post("/vk-search", async (req, res): Promise<void> => {
     let groups: VkGroup[] = [];
     let totalCount = 0;
 
+    const cityId = city ? await getCityId(token, city) : null;
+    const cityParams = cityId ? { city_id: cityId } : {};
+
     if (offset === 0) {
-      const searchQueries = await buildVkSearchQueries(query, city ?? null);
-      console.log("VK search queries from AI:", searchQueries);
+      const searchQueries = await buildVkSearchQueries(query, cityId ? null : (city ?? null));
+      console.log("VK search queries from AI:", searchQueries, cityId ? `city_id=${cityId}` : "без фильтра по городу");
 
       const seenIds = new Set<number>();
 
@@ -198,6 +220,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
             count: PAGE_SIZE,
             offset: 0,
             fields: FIELDS,
+            ...cityParams,
           }) as { items: VkGroup[]; count: number };
 
           for (const g of searchRes?.items ?? []) {
@@ -213,13 +236,13 @@ router.post("/vk-search", async (req, res): Promise<void> => {
         }
       }
     } else {
-      const searchQuery = city ? `${query} ${city}` : query;
       const searchRes = await vkRequest(token, "groups.search", {
-        q: searchQuery,
+        q: query,
         type: "group",
         count: PAGE_SIZE,
         offset,
         fields: FIELDS,
+        ...cityParams,
       }) as { items: VkGroup[]; count: number };
 
       groups = searchRes?.items ?? [];
