@@ -141,10 +141,10 @@ export default function AiSearchPage() {
   const vkSearch = useVkSearchGroups();
   const gisSearch = useGisSearchPlaces();
   const createClient = useCreateClient();
-  const clientsList = useListClients({ limit: 10000 });
+  const clientsList = useListClients();
 
   const vkCrmUrls = new Set(
-    (clientsList.data?.clients ?? [])
+    (clientsList.data ?? [])
       .map((c: { vk?: string | null }) => c.vk?.toLowerCase().replace(/\/$/, "") ?? "")
       .filter(Boolean)
   );
