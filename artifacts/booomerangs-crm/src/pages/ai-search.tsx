@@ -123,10 +123,6 @@ export default function AiSearchPage() {
   const [vkCity, setVkCity] = useState<string>(() => loadFromStorage(VK_STORAGE_KEY, "city", ""));
   const [vkGroups, setVkGroups] = useState<VkGroup[] | null>(() => loadFromStorage(VK_STORAGE_KEY, "groups", null));
   const [vkAddedItems, setVkAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(VK_STORAGE_KEY, "addedItems", [])));
-  const [vkHasMore, setVkHasMore] = useState(false);
-  const [vkTotalCount, setVkTotalCount] = useState(0);
-  const [vkNextOffset, setVkNextOffset] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [vkConnected, setVkConnected] = useState<boolean | null>(null);
   const [vkConnecting, setVkConnecting] = useState(false);
   const [vkTokenInput, setVkTokenInput] = useState("");
@@ -167,20 +163,14 @@ export default function AiSearchPage() {
     if (vkSearch.isSuccess && vkSearch.data) {
       const data = vkSearch.data;
       const newGroups = data.groups as VkGroup[];
-      const incoming = data.offset ?? 0;
 
-      setVkGroups((prev) => incoming === 0 ? newGroups : [...(prev ?? []), ...newGroups]);
-      setVkHasMore(data.hasMore ?? false);
-      setVkTotalCount(data.totalCount ?? 0);
-      setVkNextOffset((data as { nextOffset?: number }).nextOffset ?? (incoming + newGroups.length));
-      setIsLoadingMore(false);
+      setVkGroups(newGroups);
 
       try {
-        const merged = incoming === 0 ? newGroups : [...(vkGroups ?? []), ...newGroups];
         const toSave: VkSavedState = {
           query: data.query,
           city: vkCity,
-          groups: merged,
+          groups: newGroups,
           addedItems: [...vkAddedItems],
         };
         localStorage.setItem(VK_STORAGE_KEY, JSON.stringify(toSave));
@@ -265,17 +255,8 @@ export default function AiSearchPage() {
     if (q) setVkQuery(q);
     setVkAddedItems(new Set());
     setVkGroups(null);
-    setVkHasMore(false);
     setVkTotalCount(0);
-    setVkNextOffset(0);
-    setIsLoadingMore(false);
     vkSearch.mutate({ data: { query: searchQuery, city: vkCity || null, offset: 0 } });
-  };
-
-  const handleLoadMore = () => {
-    if (!vkQuery.trim() || vkSearch.isPending) return;
-    setIsLoadingMore(true);
-    vkSearch.mutate({ data: { query: vkQuery, city: vkCity || null, offset: vkNextOffset } });
   };
 
   const handleGisSearch = (e?: React.FormEvent, q?: string) => {
@@ -793,8 +774,7 @@ export default function AiSearchPage() {
               <div className="flex flex-col gap-4 pb-4">
                 <h3 className="text-lg font-display font-bold flex items-center gap-2">
                   <span className="text-base font-bold text-blue-400">VK</span>
-                  Найдено групп ({vkGroups!.length}
-                  {vkTotalCount > 0 && ` из ${vkTotalCount.toLocaleString("ru")}`})
+                  Найдено групп ({vkGroups!.length})
                 </h3>
 
                 {vkGroups!.length === 0 ? (
@@ -946,31 +926,6 @@ export default function AiSearchPage() {
                   </div>
                 )}
 
-                {vkHasMore && (
-                  <div className="flex flex-col items-center gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      className="w-full sm:w-auto gap-2 border-blue-400/40 text-blue-400 hover:bg-blue-400/10 hover:border-blue-400"
-                      onClick={handleLoadMore}
-                      disabled={vkSearch.isPending}
-                    >
-                      {isLoadingMore ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Загружаю...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4" />
-                          Загрузить ещё 20
-                        </>
-                      )}
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      Показано {vkGroups?.length ?? 0} из {vkTotalCount.toLocaleString("ru")}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </TabsContent>

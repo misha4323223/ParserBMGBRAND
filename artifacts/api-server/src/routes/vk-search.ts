@@ -195,62 +195,45 @@ router.post("/vk-search", async (req, res): Promise<void> => {
     return;
   }
 
-  const { query, city, offset = 0 } = parsed.data;
-  const PAGE_SIZE = 20;
+  const { query, city } = parsed.data;
+  const PAGE_SIZE = 50;
   const FIELDS = "description,city,links,site,members_count,photo_200,status";
 
   try {
     let groups: VkGroup[] = [];
-    let totalCount = 0;
 
     const cityId = city ? await getCityId(token, city) : null;
     const cityParams = cityId ? { city_id: cityId } : {};
 
-    if (offset === 0) {
-      const searchQueries = await buildVkSearchQueries(query, cityId ? null : (city ?? null));
-      console.log("VK search queries from AI:", searchQueries, cityId ? `city_id=${cityId}` : "без фильтра по городу");
+    const searchQueries = await buildVkSearchQueries(query, cityId ? null : (city ?? null));
+    console.log("VK search queries from AI:", searchQueries, cityId ? `city_id=${cityId}` : "без фильтра по городу");
 
-      const seenIds = new Set<number>();
+    const seenIds = new Set<number>();
 
-      for (const q of searchQueries) {
-        try {
-          const searchRes = await vkRequest(token, "groups.search", {
-            q,
-            type: "group",
-            count: PAGE_SIZE,
-            offset: 0,
-            fields: FIELDS,
-            ...cityParams,
-          }) as { items: VkGroup[]; count: number };
+    for (const q of searchQueries) {
+      try {
+        const searchRes = await vkRequest(token, "groups.search", {
+          q,
+          type: "group",
+          count: PAGE_SIZE,
+          offset: 0,
+          fields: FIELDS,
+          ...cityParams,
+        }) as { items: VkGroup[]; count: number };
 
-          for (const g of searchRes?.items ?? []) {
-            if (!seenIds.has(g.id)) {
-              seenIds.add(g.id);
-              groups.push(g);
-            }
+        for (const g of searchRes?.items ?? []) {
+          if (!seenIds.has(g.id)) {
+            seenIds.add(g.id);
+            groups.push(g);
           }
-
-          if (totalCount === 0) totalCount = searchRes?.count ?? 0;
-        } catch (err) {
-          console.error("VK search query failed:", q, err);
         }
+      } catch (err) {
+        console.error("VK search query failed:", q, err);
       }
-    } else {
-      const searchRes = await vkRequest(token, "groups.search", {
-        q: query,
-        type: "group",
-        count: PAGE_SIZE,
-        offset,
-        fields: FIELDS,
-        ...cityParams,
-      }) as { items: VkGroup[]; count: number };
-
-      groups = searchRes?.items ?? [];
-      totalCount = searchRes?.count ?? 0;
     }
 
     if (groups.length === 0) {
-      res.json({ groups: [], query, total: 0, totalCount: 0, hasMore: false, offset });
+      res.json({ groups: [], query, total: 0 });
       return;
     }
 
@@ -290,10 +273,7 @@ router.post("/vk-search", async (req, res): Promise<void> => {
         };
       });
 
-    const nextOffset = offset + groups.length;
-    const hasMore = nextOffset < totalCount;
-
-    res.json({ groups: result, query, total: result.length, totalCount, hasMore, offset, nextOffset });
+    res.json({ groups: result, query, total: result.length });
   } catch (err) {
     console.error("VK search error:", err);
     res.status(500).json({ error: err instanceof Error ? err.message : "Ошибка VK API" });
