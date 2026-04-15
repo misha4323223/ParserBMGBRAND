@@ -95,15 +95,18 @@ router.get("/clients/stats", async (_req, res): Promise<void> => {
   const categoryMap = new Map<string, number>();
 
   for (const c of all) {
-    if (c.region) {
-      regionMap.set(c.region, (regionMap.get(c.region) ?? 0) + 1);
+    const location = c.city || c.region;
+    if (location) {
+      regionMap.set(location, (regionMap.get(location) ?? 0) + 1);
     }
     if (c.category) {
       categoryMap.set(c.category, (categoryMap.get(c.category) ?? 0) + 1);
     }
   }
 
-  const byRegion = Array.from(regionMap.entries()).map(([region, count]) => ({ region, count }));
+  const byRegion = Array.from(regionMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([region, count]) => ({ region, count }));
   const byCategory = Array.from(categoryMap.entries()).map(([category, count]) => ({ category, count }));
 
   res.json({ total, active, inactive, prospect, byRegion, byCategory, totalOrderVolume });
