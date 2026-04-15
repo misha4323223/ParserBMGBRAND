@@ -20,7 +20,7 @@ router.get("/clients/export", async (req, res): Promise<void> => {
     return;
   }
 
-  const { search, status, region, category } = parsed.data;
+  const { search, status, region, city, category } = parsed.data;
   const conditions = [];
 
   if (search) {
@@ -30,6 +30,7 @@ router.get("/clients/export", async (req, res): Promise<void> => {
   }
   if (status) conditions.push(eq(clientsTable.status, status));
   if (region) conditions.push(eq(clientsTable.region!, region));
+  if (city) conditions.push(ilike(clientsTable.city!, city));
   if (category) conditions.push(eq(clientsTable.category!, category));
 
   const clients = await db
@@ -119,7 +120,7 @@ router.get("/clients", async (req, res): Promise<void> => {
     return;
   }
 
-  const { search, status, region, category } = parsed.data;
+  const { search, status, region, city, category } = parsed.data;
   const conditions = [];
 
   if (search) {
@@ -132,6 +133,9 @@ router.get("/clients", async (req, res): Promise<void> => {
   }
   if (region) {
     conditions.push(eq(clientsTable.region!, region));
+  }
+  if (city) {
+    conditions.push(ilike(clientsTable.city!, city));
   }
   if (category) {
     conditions.push(eq(clientsTable.category!, category));

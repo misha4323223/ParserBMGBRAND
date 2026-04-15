@@ -164,12 +164,16 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="p-4 md:p-6 pt-0">
               {stats?.byRegion && stats.byRegion.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-1">
                   {stats.byRegion.map((region) => (
-                    <div key={region.region} className="flex items-center justify-between">
-                      <span className="text-sm font-medium truncate mr-2">{region.region || "Не указан"}</span>
-                      <span className="text-sm text-muted-foreground shrink-0">{region.count}</span>
-                    </div>
+                    <Link
+                      key={region.region}
+                      href={`/clients?city=${encodeURIComponent(region.region)}`}
+                      className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer"
+                    >
+                      <span className="text-sm font-medium truncate mr-2 group-hover:text-primary">{region.region || "Не указан"}</span>
+                      <span className="text-sm text-muted-foreground shrink-0 group-hover:text-primary/70">{region.count}</span>
+                    </Link>
                   ))}
                 </div>
               ) : (

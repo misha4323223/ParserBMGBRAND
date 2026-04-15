@@ -22,6 +22,7 @@ export const ListClientsQueryParams = zod.object({
   search: zod.coerce.string().optional(),
   status: zod.coerce.string().optional(),
   region: zod.coerce.string().optional(),
+  city: zod.coerce.string().optional(),
   category: zod.coerce.string().optional(),
 });
 

@@ -3,9 +3,9 @@ import { useListClients } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, MapPin, Phone, Download, Calendar } from "lucide-react";
+import { Search, Plus, MapPin, Phone, Download, Calendar, X } from "lucide-react";
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
@@ -14,8 +14,13 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [, setLocation] = useLocation();
+  const searchStr = useSearch();
+  const urlParams = new URLSearchParams(searchStr);
+  const cityFilter = urlParams.get("city") || undefined;
+
   const { data: clients, isLoading } = useListClients({
     search: debouncedSearch || undefined,
+    city: cityFilter,
   });
 
   const handleExport = () => {
@@ -80,6 +85,21 @@ export default function ClientsPage() {
             className="pl-9 w-full bg-card border-border focus-visible:ring-primary"
           />
         </div>
+
+        {/* Active city filter badge */}
+        {cityFilter && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Фильтр:</span>
+            <button
+              onClick={() => setLocation("/clients")}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              {cityFilter}
+              <X className="h-3.5 w-3.5 ml-0.5" />
+            </button>
+          </div>
+        )}
 
         {/* Mobile Card List */}
         <div className="md:hidden flex flex-col gap-3">

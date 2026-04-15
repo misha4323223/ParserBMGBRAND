@@ -266,5 +266,6 @@ export type ListClientsParams = {
   search?: string;
   status?: string;
   region?: string;
+  city?: string;
   category?: string;
 };
