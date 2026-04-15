@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { VkSearchGroupsBody } from "@workspace/api-zod";
 import { getVkUserToken } from "../lib/vk-token-store";
+import { anthropic } from "@workspace/integrations-anthropic-ai";
 
 const router: IRouter = Router();
 
@@ -82,6 +83,86 @@ async function vkRequest(token: string, method: string, params: Record<string, s
   return json.response;
 }
 
+async function buildVkSearchQueries(userQuery: string, city: string | null): Promise<string[]> {
+  try {
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: `Пользователь ищет группы ВКонтакте для CRM магазинов одежды. Его запрос: "${userQuery}"${city ? `, город: ${city}` : ""}.
+
+Сгенерируй 3 поисковых запроса для VK API groups.search. Каждый запрос — короткие ключевые слова на русском (и/или английском), максимум 4 слова. Они должны точно отражать тип бизнеса (магазины одежды, шоурумы, бутики и т.п.).
+
+Верни ТОЛЬКО JSON массив строк, без объяснений:
+["запрос1", "запрос2", "запрос3"]`,
+        },
+      ],
+    });
+
+    const block = message.content[0];
+    const rawText = block.type === "text" ? block.text : "[]";
+    const match = rawText.match(/\[[\s\S]*\]/);
+    if (match) {
+      const queries = JSON.parse(match[0]) as string[];
+      if (Array.isArray(queries) && queries.length > 0) {
+        return queries.slice(0, 3);
+      }
+    }
+  } catch (err) {
+    console.error("AI query build error:", err);
+  }
+
+  const base = city ? `${userQuery} ${city}` : userQuery;
+  return [base];
+}
+
+async function filterRelevantGroups(
+  groups: Array<{ id: number; name: string; description: string | null }>,
+  userQuery: string
+): Promise<Set<number>> {
+  if (groups.length === 0) return new Set();
+
+  try {
+    const list = groups
+      .map((g, i) => `${i + 1}. "${g.name}" — ${g.description?.slice(0, 150) ?? "нет описания"}`)
+      .join("\n");
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: `Booomerangs — тульский бренд streetwear одежды. Ищем оптовых клиентов: магазины одежды, шоурумы, бутики, стрит-шопы.
+
+Запрос пользователя: "${userQuery}"
+
+Вот группы ВКонтакте (номер, название, описание):
+${list}
+
+Верни ТОЛЬКО JSON массив номеров (1-based) релевантных групп — только магазины/бутики/шоурумы одежды. Исключи: игрушки, парфюмерию, еду, технику, услуги, развлечения и всё не связанное с одеждой.
+
+Пример: [1, 3, 5]`,
+        },
+      ],
+    });
+
+    const block = message.content[0];
+    const rawText = block.type === "text" ? block.text : "[]";
+    const match = rawText.match(/\[[\s\S]*?\]/);
+    if (match) {
+      const indices = JSON.parse(match[0]) as number[];
+      return new Set(indices.map((i) => groups[i - 1]?.id).filter(Boolean));
+    }
+  } catch (err) {
+    console.error("AI filter error:", err);
+  }
+
+  return new Set(groups.map((g) => g.id));
+}
+
 router.post("/vk-search", async (req, res): Promise<void> => {
   const token = await getVkUserToken();
   if (!token) {
@@ -96,22 +177,54 @@ router.post("/vk-search", async (req, res): Promise<void> => {
   }
 
   const { query, city, offset = 0 } = parsed.data;
-  const searchQuery = city ? `${query} ${city}` : query;
   const PAGE_SIZE = 20;
+  const FIELDS = "description,city,links,site,members_count,photo_200,status";
 
   try {
-    const FIELDS = "description,city,links,site,members_count,photo_200,status";
+    let groups: VkGroup[] = [];
+    let totalCount = 0;
 
-    const searchRes = await vkRequest(token, "groups.search", {
-      q: searchQuery,
-      type: "group",
-      count: PAGE_SIZE,
-      offset: offset,
-      fields: FIELDS,
-    }) as { items: VkGroup[]; count: number };
+    if (offset === 0) {
+      const searchQueries = await buildVkSearchQueries(query, city ?? null);
+      console.log("VK search queries from AI:", searchQueries);
 
-    const groups: VkGroup[] = searchRes?.items ?? [];
-    const totalCount: number = searchRes?.count ?? 0;
+      const seenIds = new Set<number>();
+
+      for (const q of searchQueries) {
+        try {
+          const searchRes = await vkRequest(token, "groups.search", {
+            q,
+            type: "group",
+            count: PAGE_SIZE,
+            offset: 0,
+            fields: FIELDS,
+          }) as { items: VkGroup[]; count: number };
+
+          for (const g of searchRes?.items ?? []) {
+            if (!seenIds.has(g.id)) {
+              seenIds.add(g.id);
+              groups.push(g);
+            }
+          }
+
+          if (totalCount === 0) totalCount = searchRes?.count ?? 0;
+        } catch (err) {
+          console.error("VK search query failed:", q, err);
+        }
+      }
+    } else {
+      const searchQuery = city ? `${query} ${city}` : query;
+      const searchRes = await vkRequest(token, "groups.search", {
+        q: searchQuery,
+        type: "group",
+        count: PAGE_SIZE,
+        offset,
+        fields: FIELDS,
+      }) as { items: VkGroup[]; count: number };
+
+      groups = searchRes?.items ?? [];
+      totalCount = searchRes?.count ?? 0;
+    }
 
     if (groups.length === 0) {
       res.json({ groups: [], query, total: 0, totalCount: 0, hasMore: false, offset });
@@ -126,25 +239,35 @@ router.post("/vk-search", async (req, res): Promise<void> => {
 
     const detailed: VkGroup[] = detailRes?.groups ?? groups;
 
-    const result = detailed.map((g) => {
-      const fullText = [g.description, g.status].filter(Boolean).join(" ");
-      return {
-        id: g.id,
-        name: g.name,
-        vkUrl: `https://vk.com/${g.screen_name}`,
-        description: fullText.slice(0, 300) || null,
-        city: g.city?.title ?? null,
-        phone: extractPhone(fullText),
-        email: extractEmail(fullText),
-        website: extractWebsite(g),
-        instagram: extractInstagram(fullText, g.links),
-        telegram: extractTelegram(fullText, g.links),
-        membersCount: g.members_count ?? null,
-        photo: g.photo_200 ?? null,
-      };
-    });
+    const forFilter = detailed.map((g) => ({
+      id: g.id,
+      name: g.name,
+      description: [g.description, g.status].filter(Boolean).join(" ") || null,
+    }));
 
-    const nextOffset = offset + result.length;
+    const relevantIds = await filterRelevantGroups(forFilter, query);
+
+    const result = detailed
+      .filter((g) => relevantIds.has(g.id))
+      .map((g) => {
+        const fullText = [g.description, g.status].filter(Boolean).join(" ");
+        return {
+          id: g.id,
+          name: g.name,
+          vkUrl: `https://vk.com/${g.screen_name}`,
+          description: fullText.slice(0, 300) || null,
+          city: g.city?.title ?? null,
+          phone: extractPhone(fullText),
+          email: extractEmail(fullText),
+          website: extractWebsite(g),
+          instagram: extractInstagram(fullText, g.links),
+          telegram: extractTelegram(fullText, g.links),
+          membersCount: g.members_count ?? null,
+          photo: g.photo_200 ?? null,
+        };
+      });
+
+    const nextOffset = offset + groups.length;
     const hasMore = nextOffset < totalCount;
 
     res.json({ groups: result, query, total: result.length, totalCount, hasMore, offset });

@@ -15,9 +15,6 @@ async function ensureTable(): Promise<void> {
 export async function getVkUserToken(): Promise<string | null> {
   if (_memoryToken) return _memoryToken;
 
-  const envToken = process.env.VK_ACCESS_TOKEN;
-  if (envToken) return envToken;
-
   try {
     await ensureTable();
     const res = await pool.query(
