@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search, Sparkles, Loader2, Globe, MapPin, Building2, Phone,
-  ExternalLink, Plus, CheckCircle, Send, Users, Mail, AtSign, Star, Music
+  ExternalLink, Plus, CheckCircle, Send, Users, Mail, AtSign, Star, Music, Copy
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,8 @@ type CollabPerson = {
   email?: string | null;
   description?: string | null;
   whyRelevant?: string | null;
+  fitScore?: number | null;
+  pitch?: string | null;
 };
 
 type Manager = "m1" | "m2";
@@ -963,11 +965,22 @@ export default function AiSearchPage() {
                             <h4 className="font-bold font-display text-base leading-tight line-clamp-2">
                               {person.name}
                             </h4>
-                            {person.type && (
-                              <Badge variant="outline" className={`shrink-0 rounded-sm text-xs ${getTypeColor(person.type)}`}>
-                                {person.type}
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {person.fitScore != null && (
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-sm ${
+                                  person.fitScore >= 8 ? "bg-green-500/20 text-green-400" :
+                                  person.fitScore >= 5 ? "bg-yellow-500/20 text-yellow-400" :
+                                  "bg-red-500/20 text-red-400"
+                                }`}>
+                                  {person.fitScore}/10
+                                </span>
+                              )}
+                              {person.type && (
+                                <Badge variant="outline" className={`rounded-sm text-xs ${getTypeColor(person.type)}`}>
+                                  {person.type}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
 
                           {person.niche && (
@@ -1064,6 +1077,23 @@ export default function AiSearchPage() {
                               <p className="text-xs leading-relaxed opacity-70">{person.description}</p>
                             )}
                           </div>
+
+                          {person.pitch && (
+                            <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-sm p-3 flex flex-col gap-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-yellow-400 flex items-center gap-1">
+                                  <Send className="h-3 w-3" /> Питч для отправки
+                                </span>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(person.pitch!); toast.success("Питч скопирован!"); }}
+                                  className="text-xs text-muted-foreground hover:text-yellow-400 flex items-center gap-1 transition-colors"
+                                >
+                                  <Copy className="h-3 w-3" /> Копировать
+                                </button>
+                              </div>
+                              <p className="text-xs leading-relaxed text-foreground/80">{person.pitch}</p>
+                            </div>
+                          )}
 
                           <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                             <div className="ml-auto flex items-center gap-1.5">
