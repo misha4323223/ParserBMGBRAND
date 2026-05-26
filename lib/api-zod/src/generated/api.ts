@@ -292,3 +292,33 @@ export const AiSearchClientsResponse = zod.object({
   explanation: zod.string(),
   query: zod.string(),
 });
+
+/**
+ * @summary AI-powered search for artists and bloggers for collaboration
+ */
+export const CollabSearchBody = zod.object({
+  query: zod.string(),
+});
+
+export const CollabSearchResponse = zod.object({
+  results: zod.array(
+    zod.object({
+      name: zod.string(),
+      type: zod.string().nullish(),
+      niche: zod.string().nullish(),
+      city: zod.string().nullish(),
+      followersInstagram: zod.string().nullish(),
+      followersVk: zod.string().nullish(),
+      instagram: zod.string().nullish(),
+      vk: zod.string().nullish(),
+      telegram: zod.string().nullish(),
+      youtube: zod.string().nullish(),
+      tiktok: zod.string().nullish(),
+      email: zod.string().nullish(),
+      description: zod.string().nullish(),
+      whyRelevant: zod.string().nullish(),
+    }),
+  ),
+  explanation: zod.string(),
+  query: zod.string(),
+});

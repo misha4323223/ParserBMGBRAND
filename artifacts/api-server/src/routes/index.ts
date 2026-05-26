@@ -4,7 +4,7 @@ import clientsRouter from "./clients";
 import aiSearchRouter from "./ai-search";
 import vkSearchRouter from "./vk-search";
 import vkOauthRouter from "./vk-oauth";
-import gisSearchRouter from "./gis-search";
+import collabSearchRouter from "./collab-search";
 
 const router: IRouter = Router();
 
@@ -13,6 +13,6 @@ router.use(clientsRouter);
 router.use(aiSearchRouter);
 router.use(vkOauthRouter);
 router.use(vkSearchRouter);
-router.use(gisSearchRouter);
+router.use(collabSearchRouter);
 
 export default router;

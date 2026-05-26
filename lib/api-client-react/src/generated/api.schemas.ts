@@ -269,3 +269,43 @@ export type ListClientsParams = {
   city?: string;
   category?: string;
 };
+
+export interface CollabPersonResult {
+  name: string;
+  /** @nullable */
+  type?: string | null;
+  /** @nullable */
+  niche?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  followersInstagram?: string | null;
+  /** @nullable */
+  followersVk?: string | null;
+  /** @nullable */
+  instagram?: string | null;
+  /** @nullable */
+  vk?: string | null;
+  /** @nullable */
+  telegram?: string | null;
+  /** @nullable */
+  youtube?: string | null;
+  /** @nullable */
+  tiktok?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  whyRelevant?: string | null;
+}
+
+export interface CollabSearchBody {
+  query: string;
+}
+
+export interface CollabSearchResult {
+  results: CollabPersonResult[];
+  explanation: string;
+  query: string;
+}

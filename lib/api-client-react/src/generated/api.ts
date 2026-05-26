@@ -21,6 +21,8 @@ import type {
   AiSearchResult,
   Client,
   ClientStats,
+  CollabSearchBody,
+  CollabSearchResult,
   CreateClientBody,
   ErrorResponse,
   GisSearchBody,
@@ -884,4 +886,77 @@ export const useAiSearchClients = <
   TContext
 > => {
   return useMutation(getAiSearchClientsMutationOptions(options));
+};
+
+export const getCollabSearchUrl = () => {
+  return `/collab-search`;
+};
+
+export const collabSearch = async (
+  collabSearchBody: CollabSearchBody,
+  options?: RequestInit,
+): Promise<CollabSearchResult> => {
+  return customFetch<CollabSearchResult>(getCollabSearchUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(collabSearchBody),
+  });
+};
+
+export const getCollabSearchMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof collabSearch>>,
+    TError,
+    { data: BodyType<CollabSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof collabSearch>>,
+  TError,
+  { data: BodyType<CollabSearchBody> },
+  TContext
+> => {
+  const mutationKey = ["collabSearch"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof collabSearch>>,
+    { data: BodyType<CollabSearchBody> }
+  > = ({ data }) => {
+    return collabSearch(data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type CollabSearchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof collabSearch>>
+>;
+export type CollabSearchMutationBody = BodyType<CollabSearchBody>;
+export type CollabSearchMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary AI-powered search for artists and bloggers for collaboration
+ */
+export const useCollabSearch = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof collabSearch>>,
+    TError,
+    { data: BodyType<CollabSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof collabSearch>>,
+  TError,
+  { data: BodyType<CollabSearchBody> },
+  TContext
+> => {
+  return useMutation(getCollabSearchMutationOptions(options));
 };
