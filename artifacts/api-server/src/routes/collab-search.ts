@@ -170,58 +170,65 @@ type CollabPerson = {
   pitch?: string | null;
 };
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 async function enrichWithGemini(people: CollabPerson[], query: string): Promise<CollabPerson[]> {
   const genAI = await getGemini();
   if (!genAI || people.length === 0) return people;
 
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const doEnrich = async (): Promise<CollabPerson[]> => {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: { maxOutputTokens: 2048 },
+    });
 
-    const shortList = people.slice(0, 12).map((p, i) => ({
+    const shortList = people.slice(0, 8).map((p, i) => ({
       i,
       name: p.name,
       type: p.type,
       niche: p.niche,
       followers: p.followersVk || p.followersInstagram,
-      description: p.description?.slice(0, 150),
+      description: p.description?.slice(0, 120),
     }));
 
     const prompt = `Ты менеджер по коллаборациям бренда Booomerangs — молодёжная streetwear одежда из России.
+Модель: блогер получает личную страницу на booomerangs.ru и % от продаж. Аудитория 18–30 лет, мода/музыка/стрит-культура.
 
-Модель работы: блогер/артист получает свою личную страницу на сайте booomerangs.ru и % от продаж через его страницу. Ищем людей с живой аудиторией 18–30 лет, близких к моде, музыке, стрит-культуре.
-
-Запрос пользователя: "${query}"
-
-Оцени каждого кандидата и напиши готовое первое сообщение для предложения коллаба.
+Запрос: "${query}"
 
 Кандидаты:
-${JSON.stringify(shortList, null, 2)}
+${JSON.stringify(shortList)}
 
-Для каждого верни:
-- fitScore: число от 1 до 10 (10 = идеально подходит для Booomerangs)
-- whyRelevant: 1 предложение — почему подходит (или не подходит) для бренда
-- pitch: короткое первое сообщение (3-4 предложения) от имени Booomerangs для предложения коллаба. Обращение по имени. Упомяни личную страницу на сайте и % от продаж.
+Для каждого верни JSON (без лишнего текста):
+[{"i":0,"fitScore":8,"whyRelevant":"...","pitch":"..."}]
 
-Верни ТОЛЬКО JSON массив объектов:
-[{"i": 0, "fitScore": 8, "whyRelevant": "...", "pitch": "..."}, ...]`;
+fitScore — 1-10. pitch — 3 предложения от имени Booomerangs, по имени, упомяни страницу на сайте и %.`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
-    const match = text.match(/\[[\s\S]*\]/);
+    const match = text.match(/\[[\s\S]*?\]/);
     if (!match) return people;
 
     const enriched = JSON.parse(match[0]) as Array<{ i: number; fitScore: number; whyRelevant: string; pitch: string }>;
-
     const map = new Map(enriched.map(e => [e.i, e]));
     return people.map((p, i) => {
       const e = map.get(i);
       if (!e) return p;
       return { ...p, fitScore: e.fitScore, whyRelevant: e.whyRelevant, pitch: e.pitch };
     });
+  };
+
+  try {
+    return await withTimeout(doEnrich(), 25_000, people);
   } catch (err) {
     console.error("Gemini enrich error:", err);
+    return people;
   }
-  return people;
 }
 
 // ─── VK groups search ────────────────────────────────────────────────────────
@@ -356,11 +363,9 @@ router.post("/collab-search", async (req, res): Promise<void> => {
 
   const niche = guessNiche(query);
 
-  // Generate queries and fetch VK token in parallel
-  const [searchQueries, token] = await Promise.all([
-    generateCollabQueries(query),
-    getVkUserToken(),
-  ]);
+  // Query expansion is instant (local), fetch VK token in parallel with nothing to wait for
+  const searchQueries = generateCollabQueries(query);
+  const token = await getVkUserToken();
 
   // Run VK and Tavily searches in parallel
   const [vkResults, tavilyResults] = await Promise.all([
