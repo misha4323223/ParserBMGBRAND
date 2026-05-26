@@ -18,7 +18,7 @@ function getGeminiClient() {
 async function generateSearchQueries(query: string): Promise<string[]> {
   try {
     const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `Ты помощник для поиска B2B клиентов в сфере оптовой торговли одеждой.
 Пользователь ищет: "${query}"
@@ -49,7 +49,7 @@ async function generateSearchQueries(query: string): Promise<string[]> {
 async function extractWithGemini(results: Array<{ title: string; content: string; url: string }>, query: string) {
   try {
     const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const rawData = results.map((r, i) =>
       `[${i}] Заголовок: ${r.title}\nURL: ${r.url}\nТекст: ${r.content.slice(0, 500)}`
