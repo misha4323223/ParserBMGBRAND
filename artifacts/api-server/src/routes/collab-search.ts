@@ -134,33 +134,19 @@ function formatFollowers(n: number): string {
   return String(n);
 }
 
-// ─── Gemini: generate search queries ────────────────────────────────────────
+// ─── Fast local query expansion (no AI needed) ──────────────────────────────
 
-async function generateCollabQueries(query: string): Promise<string[]> {
-  const genAI = await getGemini();
-  if (!genAI) return [query, `${query} блогер`, `${query} артист`];
-
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `Ты помогаешь бренду молодёжной одежды Booomerangs (Россия) найти блогеров и инфлюенсеров для коллаборации.
-Модель коллаба: блогер получает личную страницу на сайте booomerangs.ru и процент от продаж.
-
-Пользователь ищет: "${query}"
-
-Сгенерируй 3 поисковых запроса для поиска подходящих людей в VK и интернете.
-Запросы должны помочь найти: артистов, блогеров, тиктокеров, рэперов, инфлюенсеров в нише молодёжной моды / streetwear.
-
-Верни ТОЛЬКО JSON массив строк:
-["запрос 1", "запрос 2", "запрос 3"]`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    const match = text.match(/\[[\s\S]*\]/);
-    if (match) return (JSON.parse(match[0]) as string[]).slice(0, 3);
-  } catch (err) {
-    console.error("Gemini query gen error:", err);
+function generateCollabQueries(query: string): string[] {
+  const q = query.trim();
+  // Build 3 targeted search queries from the user's input
+  const suffixes = ["блогер инфлюенсер", "TikTok Instagram", "артист музыкант streetwear"];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const sfx of suffixes) {
+    const candidate = `${q} ${sfx}`;
+    if (!seen.has(candidate)) { seen.add(candidate); result.push(candidate); }
   }
-  return [query, `${query} блогер`, `${query} артист`];
+  return result;
 }
 
 // ─── Gemini: score & pitch each person ──────────────────────────────────────
