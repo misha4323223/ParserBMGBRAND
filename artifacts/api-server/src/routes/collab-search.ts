@@ -1,7 +1,10 @@
 import { Router, type IRouter } from "express";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { tavily } from "@tavily/core";
 
 const router: IRouter = Router();
+
+const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY ?? "" });
 
 router.post("/collab-search", async (req, res): Promise<void> => {
   const { query } = req.body as { query?: string };
@@ -11,8 +14,40 @@ router.post("/collab-search", async (req, res): Promise<void> => {
     return;
   }
 
+  const searchQueries = [
+    `${query} артист блогер россия instagram vk контакты`,
+    `${query} тиктокер ютубер инфлюенсер россия коллаборация`,
+  ];
+
+  let allSearchContent = "";
+
+  for (const searchQ of searchQueries) {
+    try {
+      const tavilyResult = await tavilyClient.search(searchQ, {
+        searchDepth: "advanced",
+        maxResults: 7,
+        includeAnswer: true,
+        includeRawContent: false,
+      });
+
+      if (tavilyResult.answer) {
+        allSearchContent += `\nОтвет по запросу "${searchQ}":\n${tavilyResult.answer}\n`;
+      }
+
+      if ((tavilyResult.results as unknown[])?.length) {
+        for (const r of tavilyResult.results.slice(0, 7)) {
+          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 1200) ?? ""}\n`;
+        }
+      }
+    } catch (err) {
+      console.error("Tavily collab search error:", err);
+    }
+  }
+
   const systemPrompt = `Ты — AI-ассистент для CRM бренда Booomerangs (тульский стрит-бренд одежды).
 Твоя задача: найти российских артистов, музыкантов, блогеров, стримеров, тиктокеров и инфлюенсеров для потенциальной коллаборации с брендом одежды.
+
+${allSearchContent ? `Данные из интернета:\n${allSearchContent}` : "Используй свои знания о российских артистах и блогерах."}
 
 Ищи людей которые:
 - Активны в России
