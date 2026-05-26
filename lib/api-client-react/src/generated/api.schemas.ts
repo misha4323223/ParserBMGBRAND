@@ -298,6 +298,10 @@ export interface CollabPersonResult {
   description?: string | null;
   /** @nullable */
   whyRelevant?: string | null;
+  /** @nullable */
+  fitScore?: number | null;
+  /** @nullable */
+  pitch?: string | null;
 }
 
 export interface CollabSearchBody {

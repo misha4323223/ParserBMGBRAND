@@ -317,6 +317,8 @@ export const CollabSearchResponse = zod.object({
       email: zod.string().nullish(),
       description: zod.string().nullish(),
       whyRelevant: zod.string().nullish(),
+      fitScore: zod.number().nullish(),
+      pitch: zod.string().nullish(),
     }),
   ),
   explanation: zod.string(),

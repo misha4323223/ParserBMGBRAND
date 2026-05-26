@@ -13,4 +13,6 @@ export interface CollabPersonResult {
   email?: string | null;
   description?: string | null;
   whyRelevant?: string | null;
+  fitScore?: number | null;
+  pitch?: string | null;
 }
