@@ -155,6 +155,9 @@ export default function AiSearchPage() {
   const [collabPeople, setCollabPeople] = useState<CollabPerson[] | null>(() => loadFromStorage(COLLAB_STORAGE_KEY, "people", null));
   const [collabExplanation, setCollabExplanation] = useState<string>(() => loadFromStorage(COLLAB_STORAGE_KEY, "explanation", ""));
   const [collabAddedItems, setCollabAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(COLLAB_STORAGE_KEY, "addedItems", [])));
+  const [geminiConnected, setGeminiConnected] = useState<boolean | null>(null);
+  const [geminiKeyInput, setGeminiKeyInput] = useState("");
+  const [geminiKeySaving, setGeminiKeySaving] = useState(false);
 
   const searchClients = useAiSearchClients();
   const vkSearch = useVkSearchGroups();
@@ -226,6 +229,44 @@ export default function AiSearchPage() {
       .then((d: { connected: boolean }) => setVkConnected(d.connected))
       .catch(() => setVkConnected(false));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/gemini-key/status")
+      .then((r) => r.json())
+      .then((d: { connected: boolean }) => setGeminiConnected(d.connected))
+      .catch(() => setGeminiConnected(false));
+  }, []);
+
+  const handleGeminiSaveKey = async () => {
+    const key = geminiKeyInput.trim();
+    if (!key) return;
+    setGeminiKeySaving(true);
+    try {
+      const r = await fetch("/api/gemini-key/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const data = await r.json() as { ok?: boolean; error?: string };
+      if (r.ok && data.ok) {
+        setGeminiConnected(true);
+        setGeminiKeyInput("");
+        toast.success("Gemini API ключ подключён!");
+      } else {
+        toast.error(data.error ?? "Не удалось сохранить ключ");
+      }
+    } catch {
+      toast.error("Ошибка соединения с сервером");
+    } finally {
+      setGeminiKeySaving(false);
+    }
+  };
+
+  const handleGeminiDisconnect = async () => {
+    await fetch("/api/gemini-key/disconnect", { method: "POST" });
+    setGeminiConnected(false);
+    toast.success("Gemini отключён");
+  };
 
   const handleVkSaveToken = async () => {
     const token = vkTokenInput.trim();
@@ -867,6 +908,44 @@ export default function AiSearchPage() {
 
           {/* === COLLAB TAB === */}
           <TabsContent value="collab" className="flex flex-col gap-5">
+            {geminiConnected === false && (
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-yellow-400 text-lg">Gemini</span>
+                  <p className="text-sm font-semibold text-foreground">Подключите Gemini AI</p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Для умного поиска блогеров нужен Gemini API ключ. Получите его бесплатно на{" "}
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline">aistudio.google.com</a>.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={geminiKeyInput}
+                    onChange={(e) => setGeminiKeyInput(e.target.value)}
+                    placeholder="Вставьте API ключ Gemini..."
+                    className="flex-1 h-9 rounded-sm border border-border bg-background px-3 text-sm focus:outline-none focus:border-yellow-400"
+                  />
+                  <Button size="sm" onClick={handleGeminiSaveKey} disabled={!geminiKeyInput.trim() || geminiKeySaving}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white h-9 px-4">
+                    {geminiKeySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сохранить"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {geminiConnected === true && (
+              <div className="flex items-center justify-between p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-yellow-400">
+                  <CheckCircle className="h-4 w-4" />
+                  Gemini AI подключён
+                </div>
+                <button onClick={handleGeminiDisconnect} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                  Отключить
+                </button>
+              </div>
+            )}
+
             <div className="flex flex-col items-center text-center gap-2 py-2">
               <div className="flex items-center gap-2 text-yellow-400">
                 <Star className="h-5 w-5" />

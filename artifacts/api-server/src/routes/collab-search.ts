@@ -2,14 +2,15 @@ import { Router, type IRouter } from "express";
 import { tavily } from "@tavily/core";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVkUserToken } from "../lib/vk-token-store";
+import { getGeminiKey } from "../lib/gemini-key-store";
 
 const router: IRouter = Router();
 
 const VK_API = "https://api.vk.com/method";
 const VK_VERSION = "5.199";
 
-function getGemini() {
-  const key = process.env.GEMINI_API_KEY;
+async function getGemini() {
+  const key = await getGeminiKey();
   if (!key) return null;
   return new GoogleGenerativeAI(key);
 }
@@ -136,7 +137,7 @@ function formatFollowers(n: number): string {
 // ─── Gemini: generate search queries ────────────────────────────────────────
 
 async function generateCollabQueries(query: string): Promise<string[]> {
-  const genAI = getGemini();
+  const genAI = await getGemini();
   if (!genAI) return [query, `${query} блогер`, `${query} артист`];
 
   try {
@@ -184,7 +185,7 @@ type CollabPerson = {
 };
 
 async function enrichWithGemini(people: CollabPerson[], query: string): Promise<CollabPerson[]> {
-  const genAI = getGemini();
+  const genAI = await getGemini();
   if (!genAI || people.length === 0) return people;
 
   try {
