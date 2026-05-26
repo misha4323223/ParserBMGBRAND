@@ -373,10 +373,11 @@ export default function AiSearchPage() {
 
   const handleAddCollabToCRM = (index: number, person: CollabPerson, manager: Manager) => {
     const key = `${index}:${manager}`;
+    const cleanName = person.name.replace(/\s*[-–—|·]\s*.+$/, "").trim() || person.name;
     createClient.mutate(
       {
         data: {
-          companyName: person.name,
+          companyName: cleanName,
           city: person.city ?? undefined,
           email: person.email ?? undefined,
           instagram: person.instagram ?? undefined,
@@ -384,12 +385,14 @@ export default function AiSearchPage() {
           telegram: person.telegram ?? undefined,
           category: person.type ?? "коллаборация",
           notes: [
+            person.fitScore != null ? `Оценка совместимости: ${person.fitScore}/10` : null,
             person.niche ? `Ниша: ${person.niche}` : null,
             person.followersInstagram ? `Instagram: ${person.followersInstagram}` : null,
             person.followersVk ? `VK: ${person.followersVk}` : null,
             person.youtube ? `YouTube: ${person.youtube}` : null,
             person.tiktok ? `TikTok: ${person.tiktok}` : null,
             person.whyRelevant ? `Почему подходит: ${person.whyRelevant}` : null,
+            person.pitch ? `\nПитч:\n${person.pitch}` : null,
             person.description ?? null,
           ].filter(Boolean).join("\n") || undefined,
           manager: MANAGERS[manager].label,
