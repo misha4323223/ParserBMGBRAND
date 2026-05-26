@@ -889,7 +889,7 @@ export const useAiSearchClients = <
 };
 
 export const getCollabSearchUrl = () => {
-  return `/collab-search`;
+  return `/api/collab-search`;
 };
 
 export const collabSearch = async (

@@ -8,6 +8,9 @@
 
 export * from "./aiSearchBody";
 export * from "./aiSearchResult";
+export * from "./collabPersonResult";
+export * from "./collabSearchBody";
+export * from "./collabSearchResult";
 export * from "./categoryCount";
 export * from "./client";
 export * from "./clientStats";
