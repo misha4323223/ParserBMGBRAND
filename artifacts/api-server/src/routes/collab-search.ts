@@ -370,33 +370,40 @@ router.post("/collab-search", async (req, res): Promise<void> => {
 
   const niche = guessNiche(query);
 
-  const searchQueries = await generateCollabQueries(query);
+  // Generate queries and fetch VK token in parallel
+  const [searchQueries, token] = await Promise.all([
+    generateCollabQueries(query),
+    getVkUserToken(),
+  ]);
 
-  let results: CollabPerson[] = [];
-  let source = "интернет";
+  // Run VK and Tavily searches in parallel
+  const [vkResults, tavilyResults] = await Promise.all([
+    token
+      ? searchVkCollab(token, searchQueries, niche).catch(err => {
+          console.error("VK collab search failed:", err);
+          return [] as CollabPerson[];
+        })
+      : Promise.resolve([] as CollabPerson[]),
+    tavilyFallback(searchQueries, niche).catch(err => {
+      console.error("Tavily collab search failed:", err);
+      return [] as CollabPerson[];
+    }),
+  ]);
 
-  const token = await getVkUserToken();
-
-  if (token) {
-    try {
-      results = await searchVkCollab(token, searchQueries, niche);
-      source = "ВКонтакте";
-    } catch (err) {
-      console.error("VK collab search failed:", err);
-    }
+  // Merge: VK first, then Tavily de-duped by VK link
+  const existingVk = new Set(vkResults.map(r => r.vk?.toLowerCase()).filter(Boolean));
+  const merged: CollabPerson[] = [...vkResults];
+  for (const t of tavilyResults) {
+    if (t.vk && existingVk.has(t.vk.toLowerCase())) continue;
+    merged.push(t);
   }
 
-  if (results.length < 6) {
-    const tavilyRes = await tavilyFallback(searchQueries, niche);
-    const existingVk = new Set(results.map(r => r.vk?.toLowerCase()).filter(Boolean));
-    for (const t of tavilyRes) {
-      if (t.vk && existingVk.has(t.vk.toLowerCase())) continue;
-      results.push(t);
-    }
-    if (tavilyRes.length > 0) source = token ? "ВКонтакте + интернет" : "интернет";
-  }
+  const sources: string[] = [];
+  if (vkResults.length > 0) sources.push("ВКонтакте");
+  if (tavilyResults.length > 0) sources.push("интернет");
+  const source = sources.join(" + ") || "интернет";
 
-  const sliced = results.slice(0, 12);
+  const sliced = merged.slice(0, 12);
 
   const enriched = await enrichWithGemini(sliced, query);
 
