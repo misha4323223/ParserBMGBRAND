@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
-import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { AiSearchClientsBody } from "@workspace/api-zod";
 import { tavily } from "@tavily/core";
 
 const router: IRouter = Router();
 
-const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY ?? "" });
+function getTavilyClient() {
+  return tavily({ apiKey: process.env.TAVILY_API_KEY ?? "" });
+}
 
 router.post("/ai-search", async (req, res): Promise<void> => {
   const parsed = AiSearchClientsBody.safeParse(req.body);
@@ -15,104 +16,15 @@ router.post("/ai-search", async (req, res): Promise<void> => {
   }
 
   const { query } = parsed.data;
+  const client = getTavilyClient();
 
   const searchQueries = [
-    `${query} магазин одежды сайт контакты телефон`,
-    `${query} vk.com группа вконтакте магазин одежды`,
-    `${query} instagram магазин одежды @`,
+    `${query} магазин одежды сайт контакты`,
+    `${query} vk.com instagram магазин`,
   ];
 
-  let allSearchContent = "";
-
-  for (const searchQ of searchQueries) {
-    try {
-      const tavilyResult = await tavilyClient.search(searchQ, {
-        searchDepth: "advanced",
-        maxResults: 7,
-        includeAnswer: true,
-        includeRawContent: false,
-      });
-
-      if (tavilyResult.answer) {
-        allSearchContent += `\nОтвет по запросу "${searchQ}":\n${tavilyResult.answer}\n`;
-      }
-
-      if ((tavilyResult.results as unknown[])?.length) {
-        for (const r of tavilyResult.results.slice(0, 7)) {
-          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 1200) ?? ""}\n`;
-        }
-      }
-    } catch (err) {
-      console.error("Tavily search error:", err);
-    }
-  }
-
-  if (!allSearchContent) {
-    res.json({
-      internetResults: [],
-      explanation: "Не удалось получить данные из интернета. Попробуйте другой запрос.",
-      query,
-    });
-    return;
-  }
-
-  const systemPrompt = `Ты — AI-ассистент для CRM системы бренда Booomerangs (тульский бренд одежды).
-Твоя задача: на основе данных из интернета найти потенциальных оптовых клиентов — магазины, шоурумы, бутики, стрит-шопы, которые могут быть заинтересованы в закупке одежды.
-
-Данные из интернета:
-${allSearchContent}
-
-Для каждой найденной компании извлеки:
-- companyName: название (обязательно)
-- city: город
-- phone: телефон (форматы: +7..., 8-..., (код)...)
-- website: сайт (https://...)
-- category: тип (стрит-шоп, бутик, онлайн-магазин, шоурум, маркетплейс)
-- description: 1-2 предложения почему подходят Booomerangs
-- sourceUrl: ссылка-источник
-- instagram: ссылка или @никнейм (искать в тексте: instagram.com/..., @название)
-- vk: ссылка или id группы ВКонтакте (искать: vk.com/..., vk.com/public...)
-- telegram: ссылка или @никнейм телеграм (искать: t.me/..., @название)
-
-ВАЖНО: Тщательно ищи соцсети в тексте — ссылки на vk.com, instagram.com, t.me, упоминания @никнеймов.
-
-Верни СТРОГО JSON:
-{
-  "results": [
-    {
-      "companyName": "...",
-      "city": "...",
-      "phone": "...",
-      "website": "...",
-      "category": "...",
-      "description": "...",
-      "sourceUrl": "...",
-      "instagram": "...",
-      "vk": "...",
-      "telegram": "..."
-    }
-  ],
-  "explanation": "краткое объяснение на русском"
-}
-
-Верни 3–10 наиболее релевантных компаний. Без названия — пропусти. Пустые поля оставляй как null.`;
-
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 8192,
-    messages: [
-      {
-        role: "user",
-        content: `Найди потенциальных клиентов по запросу: ${query}`,
-      },
-    ],
-    system: systemPrompt,
-  });
-
-  const block = message.content[0];
-  const rawText = block.type === "text" ? block.text : "{}";
-
-  let internetResults: Array<{
+  const seen = new Set<string>();
+  const internetResults: Array<{
     companyName: string;
     city?: string | null;
     phone?: string | null;
@@ -124,22 +36,55 @@ ${allSearchContent}
     vk?: string | null;
     telegram?: string | null;
   }> = [];
-  let explanation = "Поиск завершён";
 
-  try {
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      internetResults = Array.isArray(parsed.results) ? parsed.results : [];
-      explanation = parsed.explanation ?? explanation;
+  for (const searchQ of searchQueries) {
+    try {
+      const result = await client.search(searchQ, {
+        searchDepth: "basic",
+        maxResults: 7,
+        includeAnswer: false,
+        includeRawContent: false,
+      });
+
+      for (const r of (result.results ?? [])) {
+        if (seen.has(r.url)) continue;
+        seen.add(r.url);
+
+        const title = r.title ?? "";
+        const content = r.content ?? "";
+        const url = r.url ?? "";
+
+        const instagramMatch = content.match(/instagram\.com\/([\w.]+)/i) ?? title.match(/instagram\.com\/([\w.]+)/i);
+        const vkMatch = content.match(/vk\.com\/([\w.]+)/i) ?? title.match(/vk\.com\/([\w.]+)/i);
+        const tgMatch = content.match(/t\.me\/([\w.]+)/i);
+        const phoneMatch = content.match(/(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/);
+
+        const cityPatterns = ["Москва", "Санкт-Петербург", "Екатеринбург", "Новосибирск", "Казань", "Тула", "Краснодар", "Нижний Новгород"];
+        const city = cityPatterns.find(c => content.includes(c) || title.includes(c)) ?? null;
+
+        internetResults.push({
+          companyName: title.replace(/\s*[-|–]\s*.+$/, "").trim() || "Без названия",
+          city,
+          phone: phoneMatch ? phoneMatch[0] : null,
+          website: url.startsWith("http") ? url : null,
+          category: query.toLowerCase().includes("бутик") ? "бутик" : query.toLowerCase().includes("шоурум") ? "шоурум" : "магазин одежды",
+          description: content.slice(0, 200) || null,
+          sourceUrl: url || null,
+          instagram: instagramMatch ? `https://instagram.com/${instagramMatch[1]}` : null,
+          vk: vkMatch ? `https://vk.com/${vkMatch[1]}` : null,
+          telegram: tgMatch ? `https://t.me/${tgMatch[1]}` : null,
+        });
+      }
+    } catch (err) {
+      console.error("Tavily search error:", err);
     }
-  } catch {
-    explanation = "Не удалось обработать ответ ИИ";
   }
 
   res.json({
-    internetResults,
-    explanation,
+    internetResults: internetResults.slice(0, 10),
+    explanation: internetResults.length > 0
+      ? `Найдено ${internetResults.length} результатов по запросу «${query}»`
+      : "Ничего не найдено. Попробуйте другой запрос.",
     query,
   });
 });
