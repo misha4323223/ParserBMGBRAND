@@ -1,11 +1,8 @@
 import { Router, type IRouter } from "express";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { AiSearchClientsBody } from "@workspace/api-zod";
-import { tavily } from "@tavily/core";
 
 const router: IRouter = Router();
-
-const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY ?? "" });
 
 router.post("/ai-search", async (req, res): Promise<void> => {
   const parsed = AiSearchClientsBody.safeParse(req.body);
@@ -16,65 +13,20 @@ router.post("/ai-search", async (req, res): Promise<void> => {
 
   const { query } = parsed.data;
 
-  const searchQueries = [
-    `${query} магазин одежды сайт контакты телефон`,
-    `${query} vk.com группа вконтакте магазин одежды`,
-    `${query} instagram магазин одежды @`,
-  ];
-
-  let allSearchContent = "";
-
-  for (const searchQ of searchQueries) {
-    try {
-      const tavilyResult = await tavilyClient.search(searchQ, {
-        searchDepth: "advanced",
-        maxResults: 7,
-        includeAnswer: true,
-        includeRawContent: false,
-      });
-
-      if (tavilyResult.answer) {
-        allSearchContent += `\nОтвет по запросу "${searchQ}":\n${tavilyResult.answer}\n`;
-      }
-
-      if (tavilyResult.results?.length) {
-        for (const r of tavilyResult.results.slice(0, 7)) {
-          allSearchContent += `\n--- Источник: ${r.url}\nЗаголовок: ${r.title}\nОписание: ${r.content?.slice(0, 1200) ?? ""}\n`;
-        }
-      }
-    } catch (err) {
-      console.error("Tavily search error:", err);
-    }
-  }
-
-  if (!allSearchContent) {
-    res.json({
-      internetResults: [],
-      explanation: "Не удалось получить данные из интернета. Попробуйте другой запрос.",
-      query,
-    });
-    return;
-  }
-
   const systemPrompt = `Ты — AI-ассистент для CRM системы бренда Booomerangs (тульский бренд одежды).
-Твоя задача: на основе данных из интернета найти потенциальных оптовых клиентов — магазины, шоурумы, бутики, стрит-шопы, которые могут быть заинтересованы в закупке одежды.
+Твоя задача: на основе своих знаний найти потенциальных оптовых клиентов — магазины, шоурумы, бутики, стрит-шопы, которые могут быть заинтересованы в закупке одежды.
 
-Данные из интернета:
-${allSearchContent}
-
-Для каждой найденной компании извлеки:
+Для каждой найденной компании укажи:
 - companyName: название (обязательно)
 - city: город
-- phone: телефон (форматы: +7..., 8-..., (код)...)
-- website: сайт (https://...)
+- phone: телефон (если известен)
+- website: сайт (если известен)
 - category: тип (стрит-шоп, бутик, онлайн-магазин, шоурум, маркетплейс)
 - description: 1-2 предложения почему подходят Booomerangs
-- sourceUrl: ссылка-источник
-- instagram: ссылка или @никнейм (искать в тексте: instagram.com/..., @название)
-- vk: ссылка или id группы ВКонтакте (искать: vk.com/..., vk.com/public...)
-- telegram: ссылка или @никнейм телеграм (искать: t.me/..., @название)
-
-ВАЖНО: Тщательно ищи соцсети в тексте — ссылки на vk.com, instagram.com, t.me, упоминания @никнеймов.
+- sourceUrl: ссылка-источник (если известна)
+- instagram: ссылка или @никнейм (если известна)
+- vk: ссылка или id группы ВКонтакте (если известна)
+- telegram: ссылка или @никнейм телеграм (если известна)
 
 Верни СТРОГО JSON:
 {
@@ -129,9 +81,9 @@ ${allSearchContent}
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      internetResults = Array.isArray(parsed.results) ? parsed.results : [];
-      explanation = parsed.explanation ?? explanation;
+      const parsedJson = JSON.parse(jsonMatch[0]);
+      internetResults = Array.isArray(parsedJson.results) ? parsedJson.results : [];
+      explanation = parsedJson.explanation ?? explanation;
     }
   } catch {
     explanation = "Не удалось обработать ответ ИИ";
