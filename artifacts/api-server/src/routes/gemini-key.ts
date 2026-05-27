@@ -17,6 +17,13 @@ router.post("/gemini-key/save", async (req, res): Promise<void> => {
     await model.generateContent("OK");
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
+    const status = (e as { status?: number }).status;
+    // 429 = quota exceeded but key IS valid — save it anyway
+    if (status === 429 || msg.includes("429") || msg.includes("quota") || msg.includes("Too Many Requests")) {
+      await setGeminiKey(key.trim());
+      res.json({ ok: true });
+      return;
+    }
     res.status(400).json({ error: `Ключ не прошёл проверку: ${msg.slice(0, 200)}` });
     return;
   }
