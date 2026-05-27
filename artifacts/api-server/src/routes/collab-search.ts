@@ -221,7 +221,7 @@ fitScore — 1-10. pitch — 3 предложения от имени Booomerang
   };
 
   try {
-    return await withTimeout(doEnrich(), 25_000, people);
+    return await withTimeout(doEnrich(), 50_000, people);
   } catch (err) {
     console.error("Gemini enrich error:", err);
     return people;
