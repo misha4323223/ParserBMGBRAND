@@ -306,6 +306,7 @@ export interface CollabPersonResult {
 
 export interface CollabSearchBody {
   query: string;
+  excludeNames?: string[];
 }
 
 export interface CollabSearchResult {

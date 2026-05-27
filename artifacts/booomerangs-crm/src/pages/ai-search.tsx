@@ -8,7 +8,7 @@ import {
   Search, Sparkles, Loader2, Globe, MapPin, Building2, Phone,
   ExternalLink, Plus, CheckCircle, Send, Users, Mail, AtSign, Star, Music, Copy
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -35,7 +35,7 @@ const COLLAB_EXAMPLE_QUERIES = [
 
 const STORAGE_KEY = "ai_search_state";
 const VK_STORAGE_KEY = "vk_search_state";
-const COLLAB_STORAGE_KEY = "collab_search_state_v1";
+const COLLAB_STORAGE_KEY = "collab_search_state_v2";
 
 type SearchResult = {
   companyName: string;
@@ -105,6 +105,7 @@ type CollabSavedState = {
   people: CollabPerson[];
   explanation: string;
   addedItems: string[];
+  seenNames: string[];
 };
 
 function loadFromStorage<T>(key: string, field: string, fallback: T): T {
@@ -155,6 +156,8 @@ export default function AiSearchPage() {
   const [collabPeople, setCollabPeople] = useState<CollabPerson[] | null>(() => loadFromStorage(COLLAB_STORAGE_KEY, "people", null));
   const [collabExplanation, setCollabExplanation] = useState<string>(() => loadFromStorage(COLLAB_STORAGE_KEY, "explanation", ""));
   const [collabAddedItems, setCollabAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(COLLAB_STORAGE_KEY, "addedItems", [])));
+  const [collabSeenNames, setCollabSeenNames] = useState<string[]>(() => loadFromStorage<string[]>(COLLAB_STORAGE_KEY, "seenNames", []));
+  const isMoreSearch = useRef(false);
   const [geminiConnected, setGeminiConnected] = useState<boolean | null>(null);
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
   const [geminiKeySaving, setGeminiKeySaving] = useState(false);
@@ -209,16 +212,36 @@ export default function AiSearchPage() {
     if (collabSearch.isSuccess && collabSearch.data) {
       const data = collabSearch.data;
       const newPeople = data.results as CollabPerson[];
-      setCollabPeople(newPeople);
-      setCollabExplanation(data.explanation);
+      const newNames = newPeople.map(p => p.name);
+
+      if (isMoreSearch.current) {
+        setCollabPeople(prev => {
+          if (!prev) return newPeople;
+          const existingNames = new Set(prev.map(p => p.name));
+          const unique = newPeople.filter(p => !existingNames.has(p.name));
+          return [...prev, ...unique];
+        });
+        setCollabSeenNames(prev => [...new Set([...prev, ...newNames])]);
+        setCollabExplanation(data.explanation);
+      } else {
+        setCollabPeople(newPeople);
+        setCollabExplanation(data.explanation);
+        setCollabSeenNames(newNames);
+        setCollabAddedItems(new Set());
+      }
+
       try {
-        const toSave: CollabSavedState = {
-          query: data.query,
-          people: newPeople,
-          explanation: data.explanation,
-          addedItems: [...collabAddedItems],
-        };
-        localStorage.setItem(COLLAB_STORAGE_KEY, JSON.stringify(toSave));
+        setCollabPeople(current => {
+          const toSave: CollabSavedState = {
+            query: data.query,
+            people: current ?? newPeople,
+            explanation: data.explanation,
+            addedItems: [...collabAddedItems],
+            seenNames: [...new Set([...collabSeenNames, ...newNames])],
+          };
+          localStorage.setItem(COLLAB_STORAGE_KEY, JSON.stringify(toSave));
+          return current;
+        });
       } catch {}
     }
   }, [collabSearch.isSuccess, collabSearch.data]);
@@ -323,9 +346,17 @@ export default function AiSearchPage() {
     const searchQuery = q ?? collabQuery;
     if (!searchQuery.trim()) return;
     if (q) setCollabQuery(q);
+    isMoreSearch.current = false;
     setCollabAddedItems(new Set());
     setCollabPeople(null);
+    setCollabSeenNames([]);
     collabSearch.mutate({ data: { query: searchQuery } });
+  };
+
+  const handleCollabSearchMore = () => {
+    if (!collabQuery.trim() || collabSearch.isPending) return;
+    isMoreSearch.current = true;
+    collabSearch.mutate({ data: { query: collabQuery, excludeNames: collabSeenNames } });
   };
 
   const MANAGERS: Record<Manager, { label: string; color: string }> = {
@@ -1208,6 +1239,27 @@ export default function AiSearchPage() {
                         </CardContent>
                       </Card>
                     ))}
+                  </div>
+                )}
+
+                {collabPeople!.length > 0 && (
+                  <div className="flex flex-col items-center gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleCollabSearchMore}
+                      disabled={collabSearch.isPending}
+                      className="gap-2 border-yellow-400/40 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400 rounded-full px-6"
+                    >
+                      {collabSearch.isPending && isMoreSearch.current ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                      Найти ещё ({collabSeenNames.length} уже показано)
+                    </Button>
+                    <p className="text-xs text-muted-foreground opacity-60">
+                      Gemini подберёт новых кандидатов, которых ещё не видели
+                    </p>
                   </div>
                 )}
               </div>

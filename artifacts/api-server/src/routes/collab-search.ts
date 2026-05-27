@@ -59,11 +59,6 @@ function isCollabPage(group: VkGroup): boolean {
   return COLLAB_GROUP_TYPES.some(kw => text.includes(kw));
 }
 
-function extractPhone(text: string): string | null {
-  const m = text.match(/(?:\+7|8)[\s(]?\d{3}[)\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}/);
-  return m ? m[0] : null;
-}
-
 function extractEmail(text: string): string | null {
   const m = text.match(/[\w.+-]{2,}@[\w-]{2,}\.[a-z]{2,}/i);
   return m ? m[0] : null;
@@ -134,21 +129,6 @@ function formatFollowers(n: number): string {
   return String(n);
 }
 
-// ─── Fast local query expansion (no AI needed) ──────────────────────────────
-
-function generateCollabQueries(query: string): string[] {
-  const q = query.trim();
-  // Build 3 targeted search queries from the user's input
-  const suffixes = ["блогер инфлюенсер", "TikTok Instagram", "артист музыкант streetwear"];
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const sfx of suffixes) {
-    const candidate = `${q} ${sfx}`;
-    if (!seen.has(candidate)) { seen.add(candidate); result.push(candidate); }
-  }
-  return result;
-}
-
 // ─── Brand context for Gemini ────────────────────────────────────────────────
 
 const BOOOMERANGS_BRAND_CONTEXT = `
@@ -193,7 +173,7 @@ Booomerangs открыты к сотрудничеству с любыми бл�
 Тон: живой, дружелюбный, без корпоративного официоза. Не более 4 предложений.
 `;
 
-// ─── Gemini: score & pitch each person ──────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type CollabPerson = {
   name: string;
@@ -221,6 +201,92 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ]);
 }
 
+// ─── Gemini: PRIMARY search — generates real candidates directly ──────────────
+
+async function geminiDirectSearch(query: string, excludeNames: string[]): Promise<CollabPerson[]> {
+  const genAI = await getGemini();
+  if (!genAI) return [];
+
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const excludeBlock = excludeNames.length > 0
+    ? `\nУЖЕ ПОКАЗАНЫ — НЕ ВКЛЮЧАЙ ИХ НИ В КАКОМ ВИДЕ:\n${excludeNames.slice(0, 60).join("\n")}\n`
+    : "";
+
+  const prompt = `${BOOOMERANGS_BRAND_CONTEXT}
+Ты — эксперт по российскому интернету, блогосфере и музыкальной индустрии.
+
+Запрос менеджера по коллаборациям: "${query}"
+${excludeBlock}
+Найди ровно 12 РЕАЛЬНЫХ людей / аккаунтов / групп, которые максимально подходят под этот запрос.
+Это должны быть реальные персонажи с реальными страницами в соцсетях.
+Будь конкретным — указывай реальные никнеймы и ссылки которые ты знаешь.
+Разнообразь результаты: разные масштабы (микро и крупные), разные платформы, разные города.
+
+Верни ТОЛЬКО валидный JSON массив без markdown и без пояснений:
+[
+  {
+    "name": "Полное имя или название группы/аккаунта",
+    "type": "рэпер|музыкант|блогер|тиктокер|ютубер|артист|стример|дизайнер|фотограф|инфлюенсер",
+    "niche": "краткое описание ниши (2-5 слов)",
+    "city": "город (если знаешь, иначе null)",
+    "vk": "https://vk.com/nickname или null",
+    "instagram": "https://instagram.com/nickname или null",
+    "telegram": "https://t.me/nickname или null",
+    "youtube": "https://youtube.com/@nickname или null",
+    "tiktok": "https://tiktok.com/@nickname или null",
+    "followersInstagram": "примерное число: '50K', '1.2M' или null",
+    "followersVk": "примерное число участников сообщества или null",
+    "description": "1-2 предложения кто это и чем занимается"
+  }
+]`;
+
+  const doSearch = async (): Promise<CollabPerson[]> => {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+
+    const items = JSON.parse(match[0]) as Array<{
+      name: string; type?: string; niche?: string; city?: string;
+      vk?: string; instagram?: string; telegram?: string; youtube?: string; tiktok?: string;
+      followersInstagram?: string; followersVk?: string; description?: string;
+    }>;
+
+    const excludeSet = new Set(excludeNames.map(n => n.toLowerCase().trim()));
+
+    return items
+      .filter(item => item.name && !excludeSet.has(item.name.toLowerCase().trim()))
+      .map(item => ({
+        name: item.name,
+        type: item.type ?? null,
+        niche: item.niche ?? null,
+        city: item.city ?? null,
+        vk: item.vk ?? null,
+        instagram: item.instagram ?? null,
+        telegram: item.telegram ?? null,
+        youtube: item.youtube ?? null,
+        tiktok: item.tiktok ?? null,
+        followersInstagram: item.followersInstagram ?? null,
+        followersVk: item.followersVk ?? null,
+        email: null,
+        description: item.description ?? null,
+        whyRelevant: null,
+        fitScore: null,
+        pitch: null,
+      }));
+  };
+
+  try {
+    return await withTimeout(doSearch(), 30_000, []);
+  } catch (err) {
+    console.error("Gemini direct search error:", err);
+    return [];
+  }
+}
+
+// ─── Gemini: score & pitch each person ──────────────────────────────────────
+
 async function enrichWithGemini(people: CollabPerson[], query: string): Promise<CollabPerson[]> {
   const genAI = await getGemini();
   if (!genAI || people.length === 0) return people;
@@ -228,12 +294,14 @@ async function enrichWithGemini(people: CollabPerson[], query: string): Promise<
   const doEnrich = async (): Promise<CollabPerson[]> => {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const shortList = people.slice(0, 8).map((p, i) => ({
+    const shortList = people.slice(0, 12).map((p, i) => ({
       i,
       name: p.name,
       type: p.type,
       niche: p.niche,
+      city: p.city,
       followers: p.followersVk || p.followersInstagram,
+      socials: [p.vk, p.instagram, p.telegram].filter(Boolean).join(", "),
       description: p.description?.slice(0, 120),
     }));
 
@@ -244,7 +312,7 @@ async function enrichWithGemini(people: CollabPerson[], query: string): Promise<
 
 Поисковый запрос менеджера CRM: "${query}"
 
-Кандидаты (найдены через ВКонтакте / интернет):
+Кандидаты:
 ${JSON.stringify(shortList, null, 2)}
 
 ВАЖНО:
@@ -288,7 +356,7 @@ async function searchVkCollab(token: string, queries: string[], niche: string): 
   for (const q of queries) {
     try {
       const res = await vkRequest(token, "groups.search", {
-        q, type: "page", count: 12, offset: 0, fields: FIELDS,
+        q, type: "page", count: 10, offset: 0, fields: FIELDS,
       }) as { items: VkGroup[] } | null;
 
       for (const g of res?.items ?? []) {
@@ -324,77 +392,76 @@ async function searchVkCollab(token: string, queries: string[], niche: string): 
   });
 }
 
-// ─── Tavily fallback ──────────────────────────────────────────────────────────
+// ─── Tavily supplemental search ───────────────────────────────────────────────
 
-async function tavilyFallback(queries: string[], niche: string): Promise<CollabPerson[]> {
+async function tavilySearch(query: string, niche: string): Promise<CollabPerson[]> {
   const client = getTavily();
   if (!client) return [];
 
   const seen = new Set<string>();
   const results: CollabPerson[] = [];
 
-  for (const sq of queries) {
-    if (results.length >= 10) break;
-    try {
-      const tr = await client.search(`${sq} блогер артист vk.com инстаграм`, { searchDepth: "basic", maxResults: 6 });
-      for (const r of tr.results ?? []) {
-        if (seen.has(r.url)) continue;
-        seen.add(r.url);
+  const searchQuery = `${query} блогер артист vk.com инстаграм`;
+  try {
+    const tr = await client.search(searchQuery, { searchDepth: "basic", maxResults: 8 });
+    for (const r of tr.results ?? []) {
+      if (results.length >= 8) break;
+      if (seen.has(r.url)) continue;
+      seen.add(r.url);
 
-        const allText = `${r.title ?? ""} ${r.content ?? ""}`;
+      const allText = `${r.title ?? ""} ${r.content ?? ""}`;
 
-        let vk: string | null = null;
-        try {
-          const u = new URL(r.url);
-          if (u.hostname.replace(/^www\./, "") === "vk.com") {
-            const seg = u.pathname.replace(/\/$/, "").split("/").filter(Boolean)[0];
-            if (seg && !/^(wall|video|photo|album|doc|feed|login|away)/.test(seg) && !seg.includes("_")) {
-              vk = `https://vk.com/${seg}`;
-            }
+      let vk: string | null = null;
+      try {
+        const u = new URL(r.url);
+        if (u.hostname.replace(/^www\./, "") === "vk.com") {
+          const seg = u.pathname.replace(/\/$/, "").split("/").filter(Boolean)[0];
+          if (seg && !/^(wall|video|photo|album|doc|feed|login|away)/.test(seg) && !seg.includes("_")) {
+            vk = `https://vk.com/${seg}`;
           }
-        } catch {}
+        }
+      } catch {}
 
-        const instagram = extractInstagram(allText, []);
-        const tg = extractTelegram(allText, []);
-        const yt = extractYoutube(allText, []);
-        const tt = extractTiktok(allText, []);
+      const instagram = extractInstagram(allText, []);
+      const tg = extractTelegram(allText, []);
+      const yt = extractYoutube(allText, []);
+      const tt = extractTiktok(allText, []);
 
-        let name = (r.title ?? "")
-          .replace(/\s*[-|–—•·:]\s*.{0,80}$/, "")
-          .replace(/\s*\|\s*(ВКонтакте|VK|TikTok|YouTube).*$/i, "")
-          .replace(/\s*•\s*Instagram.*$/i, "")
-          .trim();
+      let name = (r.title ?? "")
+        .replace(/\s*[-|–—•·:]\s*.{0,80}$/, "")
+        .replace(/\s*\|\s*(ВКонтакте|VK|TikTok|YouTube).*$/i, "")
+        .replace(/\s*•\s*Instagram.*$/i, "")
+        .trim();
 
-        if (!name || name.length < 3 || name.length > 60) continue;
-        if (name.includes("#") || /^(как|когда|что|вот|мой|топ\b|это )/i.test(name)) continue;
-        if (name.split(/\s+/).length > 6) continue;
+      if (!name || name.length < 3 || name.length > 60) continue;
+      if (name.includes("#") || /^(как|когда|что|вот|мой|топ\b|это )/i.test(name)) continue;
+      if (name.split(/\s+/).length > 6) continue;
 
-        const dedup = vk ?? instagram ?? name.toLowerCase();
-        if (seen.has(`dd:${dedup}`)) continue;
-        seen.add(`dd:${dedup}`);
+      const dedup = vk ?? instagram ?? name.toLowerCase();
+      if (seen.has(`dd:${dedup}`)) continue;
+      seen.add(`dd:${dedup}`);
 
-        results.push({
-          name,
-          type: guessType(allText),
-          niche,
-          city: null,
-          followersInstagram: null,
-          followersVk: null,
-          instagram,
-          vk,
-          telegram: tg,
-          youtube: yt,
-          tiktok: tt,
-          email: extractEmail(allText),
-          description: (r.content ?? "").slice(0, 180) || null,
-          whyRelevant: null,
-          fitScore: null,
-          pitch: null,
-        });
-      }
-    } catch (err) {
-      console.error("Tavily collab error:", err);
+      results.push({
+        name,
+        type: guessType(allText),
+        niche,
+        city: null,
+        followersInstagram: null,
+        followersVk: null,
+        instagram,
+        vk,
+        telegram: tg,
+        youtube: yt,
+        tiktok: tt,
+        email: extractEmail(allText),
+        description: (r.content ?? "").slice(0, 180) || null,
+        whyRelevant: null,
+        fitScore: null,
+        pitch: null,
+      });
     }
+  } catch (err) {
+    console.error("Tavily collab error:", err);
   }
   return results;
 }
@@ -402,58 +469,78 @@ async function tavilyFallback(queries: string[], niche: string): Promise<CollabP
 // ─── route ──────────────────────────────────────────────────────────────────
 
 router.post("/collab-search", async (req, res): Promise<void> => {
-  const { query } = req.body as { query?: string };
+  const { query, excludeNames = [] } = req.body as { query?: string; excludeNames?: string[] };
   if (!query?.trim()) {
     res.status(400).json({ error: "Поле query обязательно" });
     return;
   }
 
   const niche = guessNiche(query);
-
-  // Query expansion is instant (local), fetch VK token in parallel with nothing to wait for
-  const searchQueries = generateCollabQueries(query);
   const token = await getVkUserToken();
 
-  // Run VK and Tavily searches in parallel
-  const [vkResults, tavilyResults] = await Promise.all([
+  // VK queries for supplemental search
+  const vkQueries = [
+    `${query} блогер инфлюенсер`,
+    `${query} TikTok Instagram`,
+  ];
+
+  // Run ALL sources in parallel: Gemini (primary) + VK + Tavily (supplemental)
+  const [geminiResults, vkResults, tavilyResults] = await Promise.all([
+    geminiDirectSearch(query, excludeNames).catch(err => {
+      console.error("Gemini direct search failed:", err);
+      return [] as CollabPerson[];
+    }),
     token
-      ? searchVkCollab(token, searchQueries, niche).catch(err => {
+      ? searchVkCollab(token, vkQueries, niche).catch(err => {
           console.error("VK collab search failed:", err);
           return [] as CollabPerson[];
         })
       : Promise.resolve([] as CollabPerson[]),
-    tavilyFallback(searchQueries, niche).catch(err => {
+    tavilySearch(query, niche).catch(err => {
       console.error("Tavily collab search failed:", err);
       return [] as CollabPerson[];
     }),
   ]);
 
-  // Merge: VK first, then Tavily de-duped by VK link
-  const existingVk = new Set(vkResults.map(r => r.vk?.toLowerCase()).filter(Boolean));
-  const merged: CollabPerson[] = [...vkResults];
-  for (const t of tavilyResults) {
-    if (t.vk && existingVk.has(t.vk.toLowerCase())) continue;
-    merged.push(t);
+  // Merge: Gemini first (primary), then VK, then Tavily — deduplicate by name & vk link
+  const seenNames = new Set<string>(excludeNames.map(n => n.toLowerCase().trim()));
+  const seenVk = new Set<string>(geminiResults.map(r => r.vk?.toLowerCase()).filter(Boolean) as string[]);
+
+  const merged: CollabPerson[] = [...geminiResults];
+  seenNames.clear();
+  for (const p of geminiResults) seenNames.add(p.name.toLowerCase().trim());
+
+  for (const p of [...vkResults, ...tavilyResults]) {
+    const nameLow = p.name.toLowerCase().trim();
+    if (seenNames.has(nameLow)) continue;
+    if (p.vk && seenVk.has(p.vk.toLowerCase())) continue;
+    // Also skip if name matches any excludeNames
+    if (excludeNames.some(ex => ex.toLowerCase().trim() === nameLow)) continue;
+    seenNames.add(nameLow);
+    if (p.vk) seenVk.add(p.vk.toLowerCase());
+    merged.push(p);
   }
 
   const sources: string[] = [];
+  if (geminiResults.length > 0) sources.push("Gemini AI");
   if (vkResults.length > 0) sources.push("ВКонтакте");
   if (tavilyResults.length > 0) sources.push("интернет");
-  const source = sources.join(" + ") || "интернет";
+  const source = sources.join(" + ") || "Gemini AI";
 
+  // Enrich top results with fitScore and pitch
   const sliced = merged.slice(0, 12);
-
   const enriched = await enrichWithGemini(sliced, query);
-
   const sorted = enriched.sort((a, b) => (b.fitScore ?? 0) - (a.fitScore ?? 0));
 
+  const isRepeat = excludeNames.length > 0;
   res.json({
     results: sorted,
     explanation: sorted.length > 0
-      ? `Найдено ${sorted.length} кандидатов по запросу «${query}» (${source}, оценено Gemini AI)`
+      ? isRepeat
+        ? `Найдено ещё ${sorted.length} новых кандидатов по запросу «${query}» (${source})`
+        : `Найдено ${sorted.length} кандидатов по запросу «${query}» (${source})`
       : "Ничего не найдено. Попробуйте другой запрос — укажите нишу, город или платформу.",
     query,
-    searchQueries,
   });
 });
 

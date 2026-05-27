@@ -298,6 +298,7 @@ export const AiSearchClientsResponse = zod.object({
  */
 export const CollabSearchBody = zod.object({
   query: zod.string(),
+  excludeNames: zod.array(zod.string()).optional(),
 });
 
 export const CollabSearchResponse = zod.object({
