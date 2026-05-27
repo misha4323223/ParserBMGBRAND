@@ -27,8 +27,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Preview path: `/`
 
 ### API Server (`artifacts/api-server`)
-- Express 5 backend, порт 3000 (Start application) / порт 8080 (artifacts/api-server: API Server)
-- Фронтенд подключён к порту **8080** (`artifacts/api-server: API Server`)
+- Express 5 backend, порт **8080** (воркфлоу `artifacts/api-server: API Server`)
+- Фронтенд проксирует `/api` запросы на порт **8080** через Vite proxy
 - Routes: `/api/clients`, `/api/clients/stats`, `/api/ai-search`, `/api/vk-search`, `/api/vk-oauth/*`, `/api/collab-search`, `/api/gemini-key/*`
 
 ## Key Commands
@@ -98,9 +98,61 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `POST /api/ai-search` — Tavily (2 запроса) → структурированные данные о компаниях
 - Результаты добавляются в CRM кнопкой «В CRM»
 
+## Запуск сервера в Replit (важно!)
+
+### Архитектура воркфлоу
+
+Проект использует систему **артефактов Replit** с собственным роутером. Публичный URL маршрутизируется так:
+- `https://<домен>/` → порт **5000** (фронтенд Vite, воркфлоу `artifacts/booomerangs-crm: web`)
+- `https://<домен>/api/*` → порт **8080** (API сервер, воркфлоу `artifacts/api-server: API Server`)
+
+### Правильные воркфлоу (должны быть запущены)
+
+| Воркфлоу | Порт | Что делает |
+|---|---|---|
+| `artifacts/booomerangs-crm: web` | 5000 | Фронтенд (Vite dev server) |
+| `artifacts/api-server: API Server` | 8080 | API (Express, build + start) |
+| `artifacts/mockup-sandbox: Component Preview Server` | — | Sandbox для UI компонентов |
+
+> ⚠️ **НЕ создавай** воркфлоу "Start application" вручную — он конфликтует с артефактными воркфлоу и занимает порт 5000 до того, как `artifacts/booomerangs-crm: web` успевает его захватить.
+
+### Как быстро запустить с нуля
+
+1. Убедиться, что оба воркфлоу **running** в панели Replit (вкладка "Console" → выбрать воркфлоу)
+2. Если фронтенд упал или занял порт 5001 вместо 5000 — в консоли выполнить:
+   ```bash
+   fuser -k 5000/tcp
+   ```
+   Затем перезапустить воркфлоу `artifacts/booomerangs-crm: web`
+3. Проверить что всё работает:
+   ```bash
+   curl https://$REPLIT_DEV_DOMAIN/api/healthz
+   ```
+
+### Если что-то не работает (диагностика)
+
+```bash
+# Проверить какие порты заняты
+curl -o /dev/null -w "%{http_code}" http://localhost:5000/   # фронтенд
+curl -o /dev/null -w "%{http_code}" http://localhost:8080/api/healthz  # API
+
+# Убить висящий процесс на порту 5000
+fuser -k 5000/tcp
+
+# Проверить публичный URL
+curl https://$REPLIT_DEV_DOMAIN/
+curl https://$REPLIT_DEV_DOMAIN/api/healthz
+```
+
+### Частые проблемы
+
+- **502 на публичном URL** — фронтенд не запустился на порту 5000. Перезапусти воркфлоу `artifacts/booomerangs-crm: web`. Если пишет "Port 5000 is in use" — выполни `fuser -k 5000/tcp` и перезапусти снова.
+- **Конфликт портов при старте** — кто-то создал воркфлоу "Start application". Удали его через Replit UI (вкладка воркфлоу → удалить).
+- **API не отвечает** — перезапусти воркфлоу `artifacts/api-server: API Server`. API собирается ~30 сек (install + drizzle push + esbuild build + start).
+
 ## Важные замечания для разработки
 
-- **Два одинаковых сервера**: `Start application` (порт 3000) и `artifacts/api-server: API Server` (порт 8080). Фронтенд подключается к 8080. При изменениях нужно перезапускать **оба**.
 - **API типы не регенерируются**: при добавлении новых полей в ответ API — редактировать вручную три файла выше.
 - **Кэш localStorage**: вкладка Блогеры кэширует результаты в `collab_search_state_v1`. Старые результаты без `fitScore`/`pitch` — нужен новый поиск.
 - **Таймаут Gemini**: жёсткий 25 сек. Если превышен — результаты возвращаются без оценок (graceful fallback).
+- **Vite proxy**: `/api` запросы с фронтенда проксируются на `localhost:8080` через настройку в `artifacts/booomerangs-crm/vite.config.ts`.
