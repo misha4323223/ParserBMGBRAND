@@ -182,10 +182,7 @@ async function enrichWithGemini(people: CollabPerson[], query: string): Promise<
   if (!genAI || people.length === 0) return people;
 
   const doEnrich = async (): Promise<CollabPerson[]> => {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { maxOutputTokens: 2048 },
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const shortList = people.slice(0, 8).map((p, i) => ({
       i,
@@ -211,7 +208,7 @@ fitScore — 1-10. pitch — 3 предложения от имени Booomerang
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
-    const match = text.match(/\[[\s\S]*?\]/);
+    const match = text.match(/\[[\s\S]*\]/);
     if (!match) return people;
 
     const enriched = JSON.parse(match[0]) as Array<{ i: number; fitScore: number; whyRelevant: string; pitch: string }>;
