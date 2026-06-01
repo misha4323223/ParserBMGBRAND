@@ -1,0 +1,36 @@
+    responseTime: 14
+Gemini direct search error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+    at handleResponseNotOk (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:432:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async makeRequest (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:401:9)
+    at async generateContent (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:865:22)
+    at async doSearch (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:245:20)
+    at async geminiDirectSearch (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:281:12)
+    at async Promise.all (index 0)
+    at async <anonymous> (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:488:53) {
+  status: 503,
+  statusText: 'Service Unavailable',
+  errorDetails: undefined
+}
+Gemini enrich error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+    at handleResponseNotOk (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:432:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async makeRequest (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:401:9)
+    at async generateContent (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:865:22)
+    at async doEnrich (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:327:20)
+    at async enrichWithGemini (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:342:12)
+    at async <anonymous> (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:532:20) {
+  status: 503,
+  statusText: 'Service Unavailable',
+  errorDetails: undefined
+}
+[08:05:10.852] INFO (639): request completed
+    req: {
+      "id": 5,
+      "method": "POST",
+      "url": "/api/collab-search"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 8208
