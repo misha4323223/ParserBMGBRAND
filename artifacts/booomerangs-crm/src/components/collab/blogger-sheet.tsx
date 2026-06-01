@@ -366,12 +366,25 @@ export function BloggerSheet({ person, open, onClose, vkConnected }: Props) {
                 </div>
               )}
 
-              {/* AI suggest */}
+              {/* AI Reply button — shown when last message is incoming */}
+              {messages.length > 0 && messages[messages.length - 1].out === 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleAiSuggest()}
+                  disabled={aiLoading}
+                  className="w-full h-9 border-green-500/40 text-green-400 hover:bg-green-500/10 hover:border-green-500 text-xs gap-2">
+                  {aiLoading
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> AI формулирует ответ...</>
+                    : <><Sparkles className="h-3.5 w-3.5" /> AI Ответить на сообщение</>}
+                </Button>
+              )}
+
+              {/* AI suggest (manual prompt) */}
               <div className="flex gap-2">
                 <Input
                   value={aiPrompt}
                   onChange={e => setAiPrompt(e.target.value)}
-                  placeholder="Что написать? AI сформулирует сообщение..."
+                  placeholder="Или опиши что написать — AI сформулирует..."
                   className="text-xs h-8 bg-background/50 border-border/50 flex-1"
                   onKeyDown={e => { if (e.key === "Enter") handleAiSuggest(); }}
                 />
