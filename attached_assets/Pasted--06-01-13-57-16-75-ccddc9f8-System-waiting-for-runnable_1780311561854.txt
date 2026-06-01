@@ -1,0 +1,97 @@
+-06-01 13:57:16.75
+ccddc9f8
+System
+waiting for runnable artifact ports ports=[8080]
+2026-06-01 13:57:16.75
+ccddc9f8
+System
+baseline ports snapshot before artifact start ports=[1104]
+2026-06-01 13:57:16.76
+ccddc9f8
+System
+starting artifact processes count=1
+2026-06-01 13:57:16.76
+ccddc9f8
+System
+starting artifact process artifact=artifacts/api-server args=[node --enable-source-maps artifacts/api-server/dist/index.mjs] port=8080
+2026-06-01 13:57:16.76
+ccddc9f8
+System
+artifact process started artifact=artifacts/api-server pid=19
+2026-06-01 13:57:17.65
+ccddc9f8
+System
+artifact processes running, waiting for signal or process exit
+2026-06-01 13:57:17.65
+ccddc9f8
+System
+artifact port detected port=8080 detected=1 expected=1
+
+2026-06-01 13:57:17.65
+ccddc9f8
+System
+all artifact ports detected
+2026-06-01 13:57:17.65
+ccddc9f8
+User
+{"level":30,"time":1780311437656,"pid":19,"hostname":"localhost","port":8080,"msg":"Server listening"}
+2026-06-01 13:57:17.68
+ccddc9f8
+User
+{"level":30,"time":1780311437685,"pid":19,"hostname":"localhost","req":{"id":1,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":15,"msg":"request completed"}
+2026-06-01 13:57:32.26
+ccddc9f8
+User
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+2026-06-01 13:57:32.26
+ccddc9f8
+User
+To prepare for this change:
+2026-06-01 13:57:32.26
+ccddc9f8
+User
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-06-01 13:57:32.26
+ccddc9f8
+User
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+2026-06-01 13:57:32.26
+ccddc9f8
+User
+(node:19) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+2026-06-01 13:57:32.26
+ccddc9f8
+User
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+2026-06-01 13:57:32.26
+ccddc9f8
+User
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+2026-06-01 13:57:33.00
+ccddc9f8
+User
+{"level":30,"time":1780311453002,"pid":19,"hostname":"localhost","req":{"id":3,"method":"GET","url":"/api/clients/stats"},"res":{"statusCode":200},"responseTime":718,"msg":"request completed"}
+2026-06-01 13:57:33.01
+ccddc9f8
+User
+{"level":30,"time":1780311453012,"pid":19,"hostname":"localhost","req":{"id":2,"method":"GET","url":"/api/clients"},"res":{"statusCode":200},"responseTime":762,"msg":"request completed"}
+2026-06-01 13:57:33.03
+ccddc9f8
+User
+{"level":30,"time":1780311453039,"pid":19,"hostname":"localhost","req":{"id":4,"method":"GET","url":"/api/clients/stats"},"res":{"statusCode":200},"responseTime":15,"msg":"request completed"}
+2026-06-01 13:57:33.24
+ccddc9f8
+User
+{"level":30,"time":1780311453242,"pid":19,"hostname":"localhost","req":{"id":5,"method":"GET","url":"/api/clients"},"res":{"statusCode":200},"responseTime":16,"msg":"request completed"}
+2026-06-01 13:57:35.43
+ccddc9f8
+User
+{"level":30,"time":1780311455439,"pid":19,"hostname":"localhost","req":{"id":7,"method":"GET","url":"/api/gemini-key/status"},"res":{"statusCode":200},"responseTime":39,"msg":"request completed"}
+2026-06-01 13:57:35.44
+ccddc9f8
+User
+{"level":30,"time":1780311455439,"pid":19,"hostname":"localhost","req":{"id":6,"method":"GET","url":"/api/vk-oauth/status"},"res":{"statusCode":200},"responseTime":44,"msg":"request completed"}
+2026-06-01 13:57:35.52
+ccddc9f8
+User
+{"level":30,"time":1780311455520,"pid":19,"hostname":"localhost","req":{"id":8,"method":"GET","url":"/api/clients"},"res":{"statusCode":304},"responseTime":118,"msg":"request completed"}
