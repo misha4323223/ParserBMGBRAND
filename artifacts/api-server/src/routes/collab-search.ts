@@ -345,6 +345,96 @@ ${JSON.stringify(shortList, null, 2)}
   }
 }
 
+// ─── VK: validate and fix Gemini's VK links ──────────────────────────────────
+
+async function resolveVkScreenName(
+  token: string,
+  screenName: string,
+): Promise<{ type: string; object_id: number } | null> {
+  try {
+    const r = await vkRequest(token, "utils.resolveScreenName", { screen_name: screenName });
+    if (!r || typeof r !== "object") return null;
+    const obj = r as Record<string, unknown>;
+    if (!obj.object_id) return null;
+    return { type: String(obj.type ?? "group"), object_id: Number(obj.object_id) };
+  } catch {
+    return null;
+  }
+}
+
+async function searchVkGroupByName(
+  token: string,
+  name: string,
+): Promise<{ screen_name: string; members_count: number } | null> {
+  try {
+    const r = await vkRequest(token, "groups.search", {
+      q: name, count: 3, sort: 0, fields: "members_count",
+    }) as { count: number; items: Array<{ screen_name: string; members_count?: number }> };
+    if (r?.items?.length > 0) {
+      const g = r.items[0];
+      return { screen_name: g.screen_name, members_count: g.members_count ?? 0 };
+    }
+  } catch {}
+  return null;
+}
+
+async function validateAndFixVkLinks(
+  people: CollabPerson[],
+  token: string,
+): Promise<CollabPerson[]> {
+  return Promise.all(
+    people.map(async (person): Promise<CollabPerson> => {
+      if (!person.vk) return person;
+
+      const screenName = person.vk
+        .replace(/https?:\/\/vk\.com\//, "")
+        .replace(/\/$/, "")
+        .trim();
+
+      if (!screenName) return person;
+
+      // 1. Проверяем ссылку через VK API
+      const resolved = await resolveVkScreenName(token, screenName);
+      if (resolved?.object_id) {
+        // Ссылка валидна — для группы подтягиваем реальное кол-во участников
+        if (resolved.type === "group" || resolved.type === "page") {
+          try {
+            const gr = await vkRequest(token, "groups.getById", {
+              group_id: resolved.object_id,
+              fields: "members_count,screen_name",
+            }) as { groups?: Array<{ screen_name: string; members_count?: number }> } | Array<{ screen_name: string; members_count?: number }>;
+            const items = Array.isArray(gr)
+              ? gr
+              : ((gr as { groups?: Array<{ screen_name: string; members_count?: number }> }).groups ?? []);
+            const g = items[0];
+            if (g) {
+              return {
+                ...person,
+                vk: `https://vk.com/${g.screen_name}`,
+                followersVk: g.members_count ? formatFollowers(g.members_count) : person.followersVk,
+              };
+            }
+          } catch {}
+        }
+        return person;
+      }
+
+      // 2. Ссылка невалидна — ищем группу по имени артиста
+      const found = await searchVkGroupByName(token, person.name);
+      if (found) {
+        return {
+          ...person,
+          vk: `https://vk.com/${found.screen_name}`,
+          followersVk: found.members_count > 0 ? formatFollowers(found.members_count) : person.followersVk,
+        };
+      }
+
+      // 3. Ничего не найдено — убираем неверную ссылку
+      return { ...person, vk: null };
+    }),
+  );
+}
+
 // ─── VK groups search ────────────────────────────────────────────────────────
 
 async function searchVkCollab(token: string, queries: string[], niche: string): Promise<CollabPerson[]> {
@@ -501,13 +591,18 @@ router.post("/collab-search", async (req, res): Promise<void> => {
     }),
   ]);
 
+  // Валидируем VK-ссылки из Gemini (AI часто галлюцинирует screen_name)
+  const validatedGemini = token
+    ? await validateAndFixVkLinks(geminiResults, token).catch(() => geminiResults)
+    : geminiResults;
+
   // Merge: Gemini first (primary), then VK, then Tavily — deduplicate by name & vk link
   const seenNames = new Set<string>(excludeNames.map(n => n.toLowerCase().trim()));
-  const seenVk = new Set<string>(geminiResults.map(r => r.vk?.toLowerCase()).filter(Boolean) as string[]);
+  const seenVk = new Set<string>(validatedGemini.map(r => r.vk?.toLowerCase()).filter(Boolean) as string[]);
 
-  const merged: CollabPerson[] = [...geminiResults];
+  const merged: CollabPerson[] = [...validatedGemini];
   seenNames.clear();
-  for (const p of geminiResults) seenNames.add(p.name.toLowerCase().trim());
+  for (const p of validatedGemini) seenNames.add(p.name.toLowerCase().trim());
 
   for (const p of [...vkResults, ...tavilyResults]) {
     const nameLow = p.name.toLowerCase().trim();
