@@ -245,9 +245,7 @@ ${excludeBlock}
 ]`;
 
   const doSearch = async (): Promise<CollabPerson[]> => {
-    // enableSearch=true — Google Search grounding: Gemini ищет в Google реальные страницы
-    // вместо того чтобы придумывать ссылки из памяти
-    const text = await generateWithFallback(apiKey, prompt, { enableSearch: true });
+    const text = await generateWithFallback(apiKey, prompt);
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
 
