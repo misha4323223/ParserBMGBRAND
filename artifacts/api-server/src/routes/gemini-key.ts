@@ -12,9 +12,10 @@ router.post("/gemini-key/save", async (req, res): Promise<void> => {
   }
 
   try {
+    // Используем countTokens вместо generateContent — не расходует генерационную квоту
     const genAI = new GoogleGenerativeAI(key.trim());
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    await model.generateContent("OK");
+    await model.countTokens("test");
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     const status = (e as { status?: number }).status;
