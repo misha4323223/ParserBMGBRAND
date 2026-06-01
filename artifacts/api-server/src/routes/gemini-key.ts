@@ -13,13 +13,27 @@ router.post("/gemini-key/save", async (req, res): Promise<void> => {
 
   try {
     const genAI = new GoogleGenerativeAI(key.trim());
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     await model.generateContent("OK");
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     const status = (e as { status?: number }).status;
-    // 429 = quota exceeded but key IS valid — save it anyway
-    if (status === 429 || msg.includes("429") || msg.includes("quota") || msg.includes("Too Many Requests")) {
+    // 429 = квота исчерпана, 503 = перегружен, 404 = модель переименована —
+    // в любом из этих случаев ключ рабочий, просто сохраняем его
+    const isKeyValid =
+      status === 429 ||
+      status === 503 ||
+      status === 404 ||
+      msg.includes("429") ||
+      msg.includes("quota") ||
+      msg.includes("Too Many Requests") ||
+      msg.includes("503") ||
+      msg.includes("overloaded") ||
+      msg.includes("high demand") ||
+      msg.includes("not found for API version") ||
+      msg.includes("404");
+
+    if (isKeyValid) {
       await setGeminiKey(key.trim());
       res.json({ ok: true });
       return;

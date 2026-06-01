@@ -1,0 +1,268 @@
+08:59:21.549] INFO (965): Server listening
+    port: 8080
+[08:59:51.349] INFO (965): request completed
+    req: {
+      "id": 2,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 37
+[08:59:51.352] INFO (965): request completed
+    req: {
+      "id": 1,
+      "method": "GET",
+      "url": "/api/clients/stats"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 65
+[08:59:56.215] INFO (965): request completed
+    req: {
+      "id": 3,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 3
+[08:59:56.218] INFO (965): request completed
+    req: {
+      "id": 4,
+      "method": "GET",
+      "url": "/api/gemini-key/status"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 5
+[08:59:56.220] INFO (965): request completed
+    req: {
+      "id": 5,
+      "method": "GET",
+      "url": "/api/vk-oauth/status"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 4
+[09:00:56.638] INFO (965): request completed
+    req: {
+      "id": 6,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 16
+[09:00:59.898] INFO (965): request completed
+    req: {
+      "id": 7,
+      "method": "POST",
+      "url": "/api/vk-oauth/token"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 45
+[09:01:20.208] INFO (965): request completed
+    req: {
+      "id": 8,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 18
+[09:01:26.086] INFO (965): request completed
+    req: {
+      "id": 9,
+      "method": "POST",
+      "url": "/api/gemini-key/save"
+    }
+    res: {
+      "statusCode": 400
+    }
+    responseTime: 3133
+[09:01:31.579] INFO (965): request completed
+    req: {
+      "id": 10,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 14
+[09:01:50.469] INFO (965): request completed
+    req: {
+      "id": 11,
+      "method": "POST",
+      "url": "/api/gemini-key/save"
+    }
+    res: {
+      "statusCode": 400
+    }
+    responseTime: 5492
+[09:01:58.814] INFO (965): request completed
+    req: {
+      "id": 12,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 17
+[09:02:01.347] INFO (965): request completed
+    req: {
+      "id": 13,
+      "method": "POST",
+      "url": "/api/gemini-key/save"
+    }
+    res: {
+      "statusCode": 400
+    }
+    responseTime: 409
+[09:02:34.175] INFO (965): request completed
+    req: {
+      "id": 14,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 16
+[09:02:42.936] INFO (965): request completed
+    req: {
+      "id": 15,
+      "method": "POST",
+      "url": "/api/gemini-key/save"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 5824
+[09:02:55.714] INFO (965): request completed
+    req: {
+      "id": 16,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 16
+[09:02:56.523] INFO (965): request completed
+    req: {
+      "id": 17,
+      "method": "GET",
+      "url": "/api/gemini-key/status"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 2
+[09:02:56.526] INFO (965): request completed
+    req: {
+      "id": 19,
+      "method": "GET",
+      "url": "/api/vk-oauth/status"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 0
+[09:02:56.527] INFO (965): request completed
+    req: {
+      "id": 18,
+      "method": "GET",
+      "url": "/api/clients"
+    }
+    res: {
+      "statusCode": 304
+    }
+    responseTime: 3
+Error: No API key provided. Please provide the api_key attribute or set the TAVILY_API_KEY environment variable.
+    at tavily (/home/runner/workspace/node_modules/.pnpm/@tavily+core@0.7.3/node_modules/@tavily/core/src/client.ts:23:11)
+    at getTavilyClient (/home/runner/workspace/artifacts/api-server/src/routes/ai-search.ts:9:10)
+    at <anonymous> (/home/runner/workspace/artifacts/api-server/src/routes/ai-search.ts:112:18)
+    at Layer.handleRequest (/home/runner/workspace/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:152:17)
+    at next (/home/runner/workspace/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/route.js:157:13)
+    at Route.dispatch (/home/runner/workspace/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/route.js:117:3)
+    at handle (/home/runner/workspace/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:435:11)
+    at Layer.handleRequest (/home/runner/workspace/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:152:17)
+    at <anonymous> (/home/runner/workspace/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:295:15)
+    at processParams (/home/runner/workspace/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:582:12)
+[09:03:16.772] INFO (965): request errored
+    req: {
+      "id": 20,
+      "method": "POST",
+      "url": "/api/ai-search"
+    }
+    res: {
+      "statusCode": 500
+    }
+    responseTime: 230
+    err: {
+      "type": "Error",
+      "message": "failed with status code 500",
+      "stack":
+          Error: failed with status code 500
+              at onResFinished (/home/runner/workspace/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)
+              at ServerResponse.onResponseComplete (/home/runner/workspace/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)
+              at ServerResponse.emit (node:events:520:35)
+              at onFinish (node:_http_outgoing:1026:10)
+              at callback (node:internal/streams/writable:764:21)
+              at afterWrite (node:internal/streams/writable:708:5)
+              at afterWriteTick (node:internal/streams/writable:694:10)
+              at process.processTicksAndRejections (node:internal/process/task_queues:88:21)
+    }
+[gemini] Model gemini-2.5-flash unavailable, trying next...
+[gemini] Model gemini-2.0-flash unavailable, trying next...
+Gemini direct search error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [404 Not Found] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:432:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async makeRequest (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:401:9)
+    at async generateContent (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:865:22)
+    at async generateWithFallback (/home/runner/workspace/artifacts/api-server/src/lib/gemini-client.ts:48:22)
+    at async doSearch (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:241:18)
+    at async geminiDirectSearch (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:276:12)
+    at async Promise.all (index 0)
+    at async <anonymous> (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:480:53) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+[gemini] Model gemini-2.5-flash unavailable, trying next...
+[gemini] Model gemini-2.0-flash unavailable, trying next...
+Gemini enrich error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [404 Not Found] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+    at handleResponseNotOk (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:432:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async makeRequest (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:401:9)
+    at async generateContent (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:865:22)
+    at async generateWithFallback (/home/runner/workspace/artifacts/api-server/src/lib/gemini-client.ts:48:22)
+    at async doEnrich (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:320:18)
+    at async enrichWithGemini (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:334:12)
+    at async <anonymous> (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:524:20) {
+  status: 404,
+  statusText: 'Not Found',
+  errorDetails: undefined
+}
+[09:03:33.754] INFO (965): request completed
+    req: {
+      "id": 21,
+      "method": "POST",
+      "url": "/api/collab-search"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 6570

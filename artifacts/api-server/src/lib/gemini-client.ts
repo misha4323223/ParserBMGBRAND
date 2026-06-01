@@ -3,35 +3,42 @@
  *
  * gemini-2.5-flash — latest preview, высокое качество, НО малая квота (часто 503)
  * gemini-2.0-flash — stable GA, надёжный, хорошая пропускная способность
- * gemini-1.5-flash — старый но очень стабильный, почти никогда не падает
+ * gemini-2.0-flash-lite — лёгкая версия, очень стабильная, бесплатный тариф
  *
  * generateWithFallback() пробует модели по порядку и переходит к следующей
- * при 503 (перегрузка) или 429 (квота исчерпана для этой модели).
+ * при 503 (перегрузка), 429 (квота) или 404 (модель недоступна в этой версии API).
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Все модели ниже — БЕСПЛАТНЫЕ (Google AI Studio free tier).
 // Порядок: лучшее качество первым; при 503/перегрузке переходим к следующей.
-//   gemini-2.5-flash  — preview, лучшее качество, НО часто 503 на бесплатном тарифе
-//   gemini-2.0-flash  — stable GA, надёжный, 15 RPM бесплатно
-//   gemini-1.5-flash  — старый, но самый стабильный, почти никогда не падает
+//   gemini-2.5-flash      — preview, лучшее качество, НО часто 503 на бесплатном тарифе
+//   gemini-2.0-flash      — stable GA, надёжный, 15 RPM бесплатно
+//   gemini-2.0-flash-lite — лёгкая и очень стабильная версия, бесплатный тариф
 const MODEL_CHAIN = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
+  "gemini-2.0-flash-lite",
 ] as const;
 
 function isRetryableError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
+  const status = (e as { status?: number }).status;
   return (
+    status === 503 ||
+    status === 429 ||
+    status === 404 ||
     msg.includes("503") ||
     msg.includes("Service Unavailable") ||
     msg.includes("high demand") ||
     msg.includes("overloaded") ||
     msg.includes("429") ||
     msg.includes("RESOURCE_EXHAUSTED") ||
-    msg.includes("quota")
+    msg.includes("quota") ||
+    msg.includes("404") ||
+    msg.includes("Not Found") ||
+    msg.includes("not found for API version")
   );
 }
 
@@ -50,7 +57,7 @@ export async function generateWithFallback(
     } catch (e: unknown) {
       lastError = e;
       if (isRetryableError(e)) {
-        // Модель перегружена — пробуем следующую
+        // Модель перегружена или недоступна — пробуем следующую
         console.warn(`[gemini] Model ${modelName} unavailable, trying next...`);
         continue;
       }
