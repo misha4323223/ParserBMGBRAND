@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { getVkUserToken } from "../lib/vk-token-store";
 import { getGeminiKey } from "../lib/gemini-key-store";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, classifyGeminiError } from "../lib/gemini-client";
 
 const router: IRouter = Router();
 
@@ -157,9 +157,6 @@ router.post("/vk-messages/ai-suggest", async (req, res): Promise<void> => {
   const key = await getGeminiKey();
   if (!key) { res.status(400).json({ error: "Gemini не подключён" }); return; }
 
-  const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
   const historyText = (history ?? [])
     .slice(-10)
     .map(m => `${m.out ? "Мы (Booomerangs)" : (bloggerName ?? "Блогер")}: ${m.text}`)
@@ -174,19 +171,11 @@ ${historyText ? `История переписки:\n${historyText}\n` : "(Но�
 Напиши короткое, живое сообщение (2-4 предложения). Без официоза. Только текст — ничего больше.`;
 
   try {
-    const result = await model.generateContent(prompt);
-    res.json({ suggestion: result.response.text().trim() });
+    const suggestion = await generateWithFallback(key, prompt);
+    res.json({ suggestion });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Ошибка Gemini";
-    const isOverloaded = msg.includes("503") || msg.includes("overloaded") || msg.includes("high demand") || msg.includes("Service Unavailable");
-    const isQuota = msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED");
-    if (isOverloaded) {
-      res.status(503).json({ error: "Gemini перегружен — попробуйте через несколько секунд" });
-    } else if (isQuota) {
-      res.status(429).json({ error: "Gemini: лимит запросов исчерпан на сегодня (бесплатный план: 20 запросов/день)" });
-    } else {
-      res.status(500).json({ error: msg.slice(0, 200) });
-    }
+    const { status, message } = classifyGeminiError(e);
+    res.status(status).json({ error: message });
   }
 });
 

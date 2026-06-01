@@ -1,18 +1,16 @@
 import { Router, type IRouter } from "express";
 import { tavily } from "@tavily/core";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVkUserToken } from "../lib/vk-token-store";
 import { getGeminiKey } from "../lib/gemini-key-store";
+import { generateWithFallback } from "../lib/gemini-client";
 
 const router: IRouter = Router();
 
 const VK_API = "https://api.vk.com/method";
 const VK_VERSION = "5.199";
 
-async function getGemini() {
-  const key = await getGeminiKey();
-  if (!key) return null;
-  return new GoogleGenerativeAI(key);
+async function getGeminiApiKey(): Promise<string | null> {
+  return getGeminiKey();
 }
 
 function getTavily() {
@@ -204,10 +202,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 // ─── Gemini: PRIMARY search — generates real candidates directly ──────────────
 
 async function geminiDirectSearch(query: string, excludeNames: string[]): Promise<CollabPerson[]> {
-  const genAI = await getGemini();
-  if (!genAI) return [];
-
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const apiKey = await getGeminiApiKey();
+  if (!apiKey) return [];
 
   const excludeBlock = excludeNames.length > 0
     ? `\nУЖЕ ПОКАЗАНЫ — НЕ ВКЛЮЧАЙ ИХ НИ В КАКОМ ВИДЕ:\n${excludeNames.slice(0, 60).join("\n")}\n`
@@ -242,8 +238,7 @@ ${excludeBlock}
 ]`;
 
   const doSearch = async (): Promise<CollabPerson[]> => {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = await generateWithFallback(apiKey, prompt);
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
 
@@ -288,12 +283,10 @@ ${excludeBlock}
 // ─── Gemini: score & pitch each person ──────────────────────────────────────
 
 async function enrichWithGemini(people: CollabPerson[], query: string): Promise<CollabPerson[]> {
-  const genAI = await getGemini();
-  if (!genAI || people.length === 0) return people;
+  const apiKey = await getGeminiApiKey();
+  if (!apiKey || people.length === 0) return people;
 
   const doEnrich = async (): Promise<CollabPerson[]> => {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const shortList = people.slice(0, 12).map((p, i) => ({
       i,
       name: p.name,
@@ -324,8 +317,7 @@ ${JSON.stringify(shortList, null, 2)}
 Верни ТОЛЬКО валидный JSON массив (без markdown, без комментариев):
 [{"i":0,"fitScore":8,"whyRelevant":"...","pitch":"..."}]`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = await generateWithFallback(apiKey, prompt);
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return people;
 

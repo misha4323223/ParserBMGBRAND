@@ -1,0 +1,92 @@
+[08:38:27.816] INFO (2774): Server listening
+    port: 8080
+[08:38:47.585] INFO (2774): request completed
+    req: {
+      "id": 1,
+      "method": "GET",
+      "url": "/api/gemini-key/status"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 26
+[08:38:56.165] INFO (2774): request completed
+    req: {
+      "id": 2,
+      "method": "GET",
+      "url": "/api/gemini-key/status"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 3
+[08:39:01.499] INFO (2774): request errored
+    req: {
+      "id": 3,
+      "method": "POST",
+      "url": "/api/vk-messages/ai-suggest"
+    }
+    res: {
+      "statusCode": 503
+    }
+    responseTime: 2982
+    err: {
+      "type": "Error",
+      "message": "failed with status code 503",
+      "stack":
+          Error: failed with status code 503
+              at onResFinished (/home/runner/workspace/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)
+              at ServerResponse.onResponseComplete (/home/runner/workspace/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)
+              at ServerResponse.emit (node:events:520:35)
+              at onFinish (node:_http_outgoing:1026:10)
+              at callback (node:internal/streams/writable:764:21)
+              at afterWrite (node:internal/streams/writable:708:5)
+              at afterWriteTick (node:internal/streams/writable:694:10)
+              at process.processTicksAndRejections (node:internal/process/task_queues:88:21)
+    }
+[08:39:16.089] INFO (2774): request errored
+    req: {
+      "id": 4,
+      "method": "POST",
+      "url": "/api/vk-messages/ai-suggest"
+    }
+    res: {
+      "statusCode": 503
+    }
+    responseTime: 1649
+    err: {
+      "type": "Error",
+      "message": "failed with status code 503",
+      "stack":
+          Error: failed with status code 503
+              at onResFinished (/home/runner/workspace/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)
+              at ServerResponse.onResponseComplete (/home/runner/workspace/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)
+              at ServerResponse.emit (node:events:520:35)
+              at onFinish (node:_http_outgoing:1026:10)
+              at callback (node:internal/streams/writable:764:21)
+              at afterWrite (node:internal/streams/writable:708:5)
+              at afterWriteTick (node:internal/streams/writable:694:10)
+              at process.processTicksAndRejections (node:internal/process/task_queues:88:21)
+    }
+Gemini enrich error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+    at handleResponseNotOk (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:432:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async makeRequest (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:401:9)
+    at async generateContent (file:///home/runner/workspace/node_modules/.pnpm/@google+generative-ai@0.24.1/node_modules/@google/generative-ai/dist/index.mjs:865:22)
+    at async doEnrich (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:327:20)
+    at async enrichWithGemini (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:342:12)
+    at async <anonymous> (/home/runner/workspace/artifacts/api-server/src/routes/collab-search.ts:532:20) {
+  status: 503,
+  statusText: 'Service Unavailable',
+  errorDetails: undefined
+}
+[08:41:04.023] INFO (2774): request completed
+    req: {
+      "id": 5,
+      "method": "POST",
+      "url": "/api/collab-search"
+    }
+    res: {
+      "statusCode": 200
+    }
+    responseTime: 34605

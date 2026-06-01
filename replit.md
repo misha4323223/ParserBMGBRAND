@@ -15,7 +15,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
-- **AI**: Gemini 2.5 Flash (`@google/generative-ai`) — для вкладки Блогеры
+- **AI**: Gemini с авто-фоллбэком моделей (`@google/generative-ai`) — для вкладки Блогеры
 - **Internet Search**: Tavily Search API (`@tavily/core`)
 
 ## Applications
@@ -29,7 +29,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ### API Server (`artifacts/api-server`)
 - Express 5 backend, порт **8080** (воркфлоу `artifacts/api-server: API Server`)
 - Фронтенд проксирует `/api` запросы на порт **8080** через Vite proxy
-- Routes: `/api/clients`, `/api/clients/stats`, `/api/ai-search`, `/api/vk-search`, `/api/vk-oauth/*`, `/api/collab-search`, `/api/gemini-key/*`
+- Routes: `/api/clients`, `/api/clients/stats`, `/api/ai-search`, `/api/vk-search`, `/api/vk-oauth/*`, `/api/collab-search`, `/api/gemini-key/*`, `/api/vk-messages/*`
 
 ## Key Commands
 
@@ -52,33 +52,55 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `SESSION_SECRET` — секрет сессии Express
 - `VK_APP_ID` — ID VK приложения для OAuth
 
+## Gemini — модели и фоллбэк
+
+Все Gemini запросы идут через `artifacts/api-server/src/lib/gemini-client.ts`.
+
+### Цепочка моделей (все бесплатные, Google AI Studio free tier)
+
+| Модель | Тип | Лимит | Причина |
+|---|---|---|---|
+| `gemini-2.5-flash` | Preview | 10 RPM, часто 503 | Пробуем первой — лучшее качество |
+| `gemini-2.0-flash` | Stable GA | 15 RPM, надёжный | Фоллбэк при 503 |
+| `gemini-1.5-flash` | Stable | 15 RPM, очень стабильный | Последний резерв |
+
+При 503 («перегрузка») или 429 («квота») — автоматически переходит к следующей модели. Платных вызовов нет.
+
+### Подключение Gemini ключа
+
+- Ввод прямо в UI → сохраняется в `app_settings` в БД
+- Env var `GEMINI_API_KEY` — запасной вариант
+- Получить бесплатный ключ: [aistudio.google.com](https://aistudio.google.com/app/apikey)
+- Ключ валидируется при сохранении; ошибка 429/503 не блокирует сохранение (ключ рабочий)
+
 ## Вкладка "Блогеры" (collab-search) — как работает
 
 ### Маршрут: `POST /api/collab-search`
 
-1. **Генерация запросов** — мгновенно, локально (3 варианта на основе запроса пользователя)
-2. **VK + Tavily** — параллельно (~10–15 сек):
-   - VK: ищет группы/страницы артистов, блогеров, инфлюенсеров (если токен подключён)
-   - Tavily: веб-поиск по тем же запросам как резервный/дополнительный источник
-3. **Gemini 2.5 Flash** — обогащает топ-8 кандидатов (~15–25 сек, жёсткий таймаут 25 сек):
-   - `fitScore` (1–10) — оценка совместимости с брендом
-   - `whyRelevant` — почему подходит
-   - `pitch` — готовое первое сообщение для предложения коллаба
-4. Результаты сортируются по `fitScore` и отображаются карточками
+1. **Gemini (PRIMARY)** — генерирует 12 реальных кандидатов с именами, нишей, соц. сетями
+2. **VK + Tavily** — параллельно, дополнительные кандидаты из реальных источников
+3. **Gemini enrich** — оценивает топ-8 кандидатов (~15–25 сек, таймаут 50 сек):
+   - `fitScore` (1–10), `whyRelevant`, `pitch`
+4. Параметр `excludeNames` — исключает уже показанных (кнопка «Найти ещё»)
+5. Результаты сортируются по `fitScore` и отображаются карточками
+
+### Карточка блогера — BloggerSheet
+
+Нажатие на имя блогера или иконку 💬 в карточке → открывается панель справа:
+- Полный профиль: имя, тип, ниша, город, все соц. ссылки, оценка совместимости
+- **Диалог ВКонтакте**: автоматически резолвит peer_id по VK-ссылке, загружает историю переписки
+- **AI-составление сообщений**: описываешь что хочешь написать → Gemini формулирует текст
+- **Отправка**: Ctrl+Enter или кнопка «Отправить»
 
 ### Ключевые файлы
 
-- `artifacts/api-server/src/routes/collab-search.ts` — основной маршрут
+- `artifacts/api-server/src/routes/collab-search.ts` — основной маршрут поиска
+- `artifacts/api-server/src/routes/vk-messages.ts` — диалог ВКонтакте (resolve/send/history/ai-suggest)
+- `artifacts/api-server/src/lib/gemini-client.ts` — Gemini с авто-фоллбэком моделей
 - `artifacts/api-server/src/lib/gemini-key-store.ts` — хранение Gemini ключа в БД
 - `artifacts/api-server/src/routes/gemini-key.ts` — маршруты `/api/gemini-key/*`
 - `artifacts/booomerangs-crm/src/pages/ai-search.tsx` — фронтенд (все три вкладки)
-
-### Подключение Gemini ключа
-
-Вкладка **Блогеры** показывает жёлтый блок «Подключите Gemini AI» если ключ не введён.
-- Ввод прямо в UI → сохраняется в таблицу `app_settings` в БД
-- Если задан `GEMINI_API_KEY` в переменных окружения — используется как запасной вариант (показывается зелёная полоска «Gemini AI подключён»)
-- Получить бесплатный ключ: [aistudio.google.com](https://aistudio.google.com/app/apikey)
+- `artifacts/booomerangs-crm/src/components/collab/blogger-sheet.tsx` — панель блогера
 
 ### API-типы (обновлены вручную, без codegen)
 
@@ -86,6 +108,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `lib/api-zod/src/generated/types/collabPersonResult.ts`
 - `lib/api-zod/src/generated/api.ts`
 - `lib/api-client-react/src/generated/api.schemas.ts`
+
+## Маршруты ВК-сообщений `/api/vk-messages/*`
+
+- `POST /resolve` — получает `peer_id` по VK-ссылке (пробует как user, потом как group → 2B+id)
+- `POST /send` — отправляет сообщение (требует scope `messages` в токене)
+- `GET /history?peerId=N` — история переписки (код 100 = нет диалога → возвращает `[]`)
+- `POST /ai-suggest` — Gemini генерирует следующее сообщение по контексту диалога
+
+VK OAuth теперь запрашивает scope `groups,messages`. Если токен без messages scope — UI показывает подсказку переподключить.
 
 ## Вкладка "ВКонтакте" — как работает
 
