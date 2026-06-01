@@ -19,7 +19,7 @@ router.get("/vk-oauth/start", (req, res) => {
   const url = new URL("https://oauth.vk.com/authorize");
   url.searchParams.set("client_id", VK_APP_ID);
   url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("scope", "groups");
+  url.searchParams.set("scope", "groups,messages");
   url.searchParams.set("response_type", "token");
   url.searchParams.set("v", "5.199");
   url.searchParams.set("display", "page");

@@ -6,8 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search, Sparkles, Loader2, Globe, MapPin, Building2, Phone,
-  ExternalLink, Plus, CheckCircle, Send, Users, Mail, AtSign, Star, Music, Copy
+  ExternalLink, Plus, CheckCircle, Send, Users, Mail, AtSign, Star, Music, Copy, MessageSquare
 } from "lucide-react";
+import { BloggerSheet } from "@/components/collab/blogger-sheet";
 import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -158,6 +159,7 @@ export default function AiSearchPage() {
   const [collabAddedItems, setCollabAddedItems] = useState<Set<string>>(() => new Set(loadFromStorage<string[]>(COLLAB_STORAGE_KEY, "addedItems", [])));
   const [collabSeenNames, setCollabSeenNames] = useState<string[]>(() => loadFromStorage<string[]>(COLLAB_STORAGE_KEY, "seenNames", []));
   const isMoreSearch = useRef(false);
+  const [selectedBlogger, setSelectedBlogger] = useState<CollabPerson | null>(null);
   const [geminiConnected, setGeminiConnected] = useState<boolean | null>(null);
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
   const [geminiKeySaving, setGeminiKeySaving] = useState(false);
@@ -1075,7 +1077,10 @@ export default function AiSearchPage() {
                       <Card key={index} className="bg-card border-border h-full shadow-none rounded-sm">
                         <CardContent className="p-4 flex flex-col gap-3">
                           <div className="flex justify-between items-start gap-2">
-                            <h4 className="font-bold font-display text-base leading-tight line-clamp-2">
+                            <h4
+                              className="font-bold font-display text-base leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
+                              onClick={() => setSelectedBlogger(person)}
+                            >
                               {person.name}
                             </h4>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -1092,6 +1097,14 @@ export default function AiSearchPage() {
                                 <Badge variant="outline" className={`rounded-sm text-xs ${getTypeColor(person.type)}`}>
                                   {person.type}
                                 </Badge>
+                              )}
+                              {person.vk && (
+                                <button
+                                  onClick={() => setSelectedBlogger(person)}
+                                  title="Написать во ВКонтакте"
+                                  className="text-blue-400/60 hover:text-blue-400 transition-colors">
+                                  <MessageSquare className="h-4 w-4" />
+                                </button>
                               )}
                             </div>
                           </div>
@@ -1267,6 +1280,13 @@ export default function AiSearchPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <BloggerSheet
+        person={selectedBlogger}
+        open={selectedBlogger !== null}
+        onClose={() => setSelectedBlogger(null)}
+        vkConnected={vkConnected === true}
+      />
     </AppLayout>
   );
 }
