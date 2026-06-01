@@ -30,7 +30,12 @@ async function vkRequest(token: string, method: string, params: Record<string, s
 function isNoPermission(e: unknown): boolean {
   const code = (e as VkError).code;
   const msg = e instanceof Error ? e.message.toLowerCase() : "";
-  return code === 7 || code === 901 || code === 902 || code === 917 || msg.includes("permission");
+  // VK codes: 5=auth failed, 7=permission denied, 15=access denied, 901/902/917=messages-specific
+  return (
+    code === 5 || code === 7 || code === 15 ||
+    code === 901 || code === 902 || code === 917 ||
+    msg.includes("permission") || msg.includes("access denied") || msg.includes("authorization")
+  );
 }
 
 // ─── Resolve screen_name → peer_id ──────────────────────────────────────────
@@ -125,10 +130,17 @@ router.get("/vk-messages/history", async (req, res): Promise<void> => {
     };
     res.json({ messages: (result.items ?? []).reverse(), total: result.count });
   } catch (e: unknown) {
+    const code = (e as VkError).code;
+    // Code 100 = "peer_id is invalid" — диалога ещё не было, возвращаем пустую историю
+    if (code === 100) {
+      res.json({ messages: [], total: 0 });
+      return;
+    }
+    console.error("[vk-messages/history] VK error", { code, msg: e instanceof Error ? e.message : e });
     if (isNoPermission(e)) {
-      res.status(403).json({ error: "no_messages_permission" });
+      res.status(403).json({ error: "no_messages_permission", vkCode: code });
     } else {
-      res.status(400).json({ error: e instanceof Error ? e.message : "Ошибка VK" });
+      res.status(400).json({ error: e instanceof Error ? e.message : "Ошибка VK", vkCode: code });
     }
   }
 });
@@ -165,7 +177,16 @@ ${historyText ? `История переписки:\n${historyText}\n` : "(Но�
     const result = await model.generateContent(prompt);
     res.json({ suggestion: result.response.text().trim() });
   } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message.slice(0, 200) : "Ошибка Gemini" });
+    const msg = e instanceof Error ? e.message : "Ошибка Gemini";
+    const isOverloaded = msg.includes("503") || msg.includes("overloaded") || msg.includes("high demand") || msg.includes("Service Unavailable");
+    const isQuota = msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED");
+    if (isOverloaded) {
+      res.status(503).json({ error: "Gemini перегружен — попробуйте через несколько секунд" });
+    } else if (isQuota) {
+      res.status(429).json({ error: "Gemini: лимит запросов исчерпан на сегодня (бесплатный план: 20 запросов/день)" });
+    } else {
+      res.status(500).json({ error: msg.slice(0, 200) });
+    }
   }
 });
 

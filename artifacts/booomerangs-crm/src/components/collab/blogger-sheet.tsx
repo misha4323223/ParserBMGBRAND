@@ -1,4 +1,4 @@
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -201,6 +201,7 @@ export function BloggerSheet({ person, open, onClose, vkConnected }: Props) {
         side="right"
         className="w-full sm:max-w-lg bg-card border-l border-border flex flex-col p-0 overflow-hidden"
       >
+        <SheetTitle className="sr-only">{person.name} — профиль блогера</SheetTitle>
         {/* ─── Header ──────────────────────────────────────────────────── */}
         <div className="flex-shrink-0 p-5 border-b border-border/50">
           <div className="flex items-start justify-between gap-3 mb-3">
